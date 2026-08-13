@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
 // ============ ENUMS ============
 enum ScheduleType {
@@ -33,6 +35,7 @@ class ScheduleModel {
   final Color color;
   final IconData icon;
   final String? attachment;
+  final String? bannerImage;
   final List<String>? assignedClasses;
   final List<String>? assignedTeachers;
   final String? eventType;
@@ -61,6 +64,7 @@ class ScheduleModel {
     required this.color,
     required this.icon,
     this.attachment,
+    this.bannerImage,
     this.assignedClasses,
     this.assignedTeachers,
     this.eventType,
@@ -114,6 +118,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   bool _isAddingNew = false;
 
   // Form Controllers
+  final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _locationController = TextEditingController();
@@ -138,6 +143,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   String _selectedSchoolForm = 'School A';
   List<String> _selectedClasses = [];
   List<String> _selectedTeachers = [];
+  File? _bannerImage;
+  String? _bannerImagePath;
 
   final List<String> _classList = ['Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5'];
   final List<String> _teacherList = ['Mr. John', 'Ms. Sarah', 'Dr. Smith', 'Mrs. Brown'];
@@ -203,6 +210,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         eventDescription: 'Students will participate in various sports activities',
         assignedClasses: ['Class 1', 'Class 2', 'Class 3'],
         assignedTeachers: ['Mr. John', 'Ms. Sarah'],
+        bannerImage: null,
       ),
       ScheduleModel(
         id: '2',
@@ -222,6 +230,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         examInstructions: 'Bring your own stationery. No electronic devices allowed.',
         assignedClasses: ['Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5'],
         assignedTeachers: ['Dr. Smith', 'Mrs. Brown'],
+        bannerImage: null,
       ),
       ScheduleModel(
         id: '3',
@@ -241,6 +250,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         otherNotes: 'All parents must attend. Report cards will be distributed.',
         assignedClasses: ['All Classes'],
         assignedTeachers: ['All Teachers'],
+        bannerImage: null,
       ),
       ScheduleModel(
         id: '4',
@@ -260,6 +270,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         eventDescription: 'Students will display their science projects',
         assignedClasses: ['Class 3', 'Class 4', 'Class 5'],
         assignedTeachers: ['Mr. John', 'Dr. Smith'],
+        bannerImage: null,
       ),
       // School B Schedules
       ScheduleModel(
@@ -280,6 +291,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         examInstructions: 'Bring your own stationery. No electronic devices allowed.',
         assignedClasses: ['All Classes'],
         assignedTeachers: ['All Teachers'],
+        bannerImage: null,
       ),
       ScheduleModel(
         id: '6',
@@ -298,6 +310,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         contactPerson: 'Training Coordinator',
         otherNotes: 'All teachers must attend. Certificate will be provided.',
         assignedTeachers: ['All Teachers'],
+        bannerImage: null,
       ),
       ScheduleModel(
         id: '7',
@@ -317,6 +330,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         eventDescription: 'Cultural performances, competitions, and prize distribution',
         assignedClasses: ['All Classes'],
         assignedTeachers: ['Ms. Sarah', 'Mrs. Brown'],
+        bannerImage: null,
       ),
     ];
   }
@@ -360,7 +374,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   int get _totalEvents => schedules.where((s) => s.type == ScheduleType.event).length;
   int get _totalExams => schedules.where((s) => s.type == ScheduleType.exam).length;
   int get _totalOthers => schedules.where((s) => s.type == ScheduleType.other).length;
-  int get _upcomingCount => schedules.where((s) => s.startDate.isAfter(DateTime.now())).length;
 
   Map<String, int> get _schoolWiseStats {
     Map<String, int> stats = {};
@@ -395,6 +408,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     _selectedSchoolForm = 'School A';
     _selectedClasses = [];
     _selectedTeachers = [];
+    _bannerImage = null;
+    _bannerImagePath = null;
   }
 
   void _loadScheduleToForm(ScheduleModel schedule) {
@@ -410,6 +425,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     _selectedSchoolForm = schedule.school;
     _selectedClasses = schedule.assignedClasses ?? [];
     _selectedTeachers = schedule.assignedTeachers ?? [];
+    _bannerImagePath = schedule.bannerImage;
 
     if (schedule.type == ScheduleType.event) {
       _eventTypeController.text = schedule.eventType ?? '';
@@ -442,7 +458,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       color: _selectedColor,
       icon: _selectedIcon,
       school: _selectedSchoolForm,
-      assignedClasses: _selectedClasses.isNotEmpty ? _selectedClasses : null,
+      bannerImage: _bannerImagePath,
+      assignedClasses: _selectedType != ScheduleType.event ? _selectedClasses : null,
       assignedTeachers: _selectedTeachers.isNotEmpty ? _selectedTeachers : null,
       eventType: _selectedType == ScheduleType.event ? _eventTypeController.text : null,
       guestSpeaker: _selectedType == ScheduleType.event ? _guestSpeakerController.text : null,
@@ -457,6 +474,30 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       contactPerson: _selectedType == ScheduleType.other ? _contactPersonController.text : null,
       otherNotes: _selectedType == ScheduleType.other ? _otherNotesController.text : null,
     );
+  }
+
+  // ============ BANNER IMAGE PICKER ============
+  Future<void> _pickBannerImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 800,
+      maxHeight: 400,
+      imageQuality: 80,
+    );
+    if (pickedFile != null) {
+      setState(() {
+        _bannerImage = File(pickedFile.path);
+        _bannerImagePath = pickedFile.path;
+      });
+    }
+  }
+
+  void _removeBannerImage() {
+    setState(() {
+      _bannerImage = null;
+      _bannerImagePath = null;
+    });
   }
 
   @override
@@ -793,8 +834,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   ),
                 ),
               ),
-
               const SizedBox(width: 8),
+
               if (!_showRightPanel || !_isAddingNew)
                 ElevatedButton.icon(
                   onPressed: () {
@@ -1157,6 +1198,21 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Banner Image
+          if (schedule.bannerImage != null)
+            Container(
+              height: 150,
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                image: DecorationImage(
+                  image: FileImage(File(schedule.bannerImage!)),
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+
           Row(
             children: [
               Container(
@@ -1263,7 +1319,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           const Divider(),
           const SizedBox(height: 12),
 
-          if (schedule.assignedClasses != null)
+          // Show assigned classes only for Exam and Other types
+          if (schedule.type != ScheduleType.event && schedule.assignedClasses != null)
             _buildAssignedList('📚 Assigned Classes', schedule.assignedClasses!),
           if (schedule.assignedTeachers != null)
             _buildAssignedList('👨‍🏫 Assigned Teachers', schedule.assignedTeachers!),
@@ -1921,116 +1978,45 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
         const SizedBox(height: 10),
 
-        // Color Picker
-        const Text(
-          'Color',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 4,
-          children: _colors.map((color) {
-            final isSelected = _selectedColor == color;
-            return InkWell(
-              onTap: () {
-                setState(() {
-                  _selectedColor = color;
-                });
-              },
-              child: Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isSelected ? Colors.blue[700]! : Colors.transparent,
-                    width: 2,
-                  ),
-                ),
-                child: isSelected
-                    ? const Icon(Icons.check, color: Colors.white, size: 14)
-                    : null,
-              ),
-            );
-          }).toList(),
-        ),
+        // Banner Upload Section
+        _buildBannerUploadSection(),
+
         const SizedBox(height: 10),
 
-        // Icon Picker
-        const Text(
-          'Icon',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
+        // Assign Classes - Only for Exam and Other types
+        if (_selectedType != ScheduleType.event) ...[
+          const Text(
+            'Assign Classes',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
           ),
-        ),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 4,
-          children: _icons.map((icon) {
-            final isSelected = _selectedIcon == icon;
-            return InkWell(
-              onTap: () {
-                setState(() {
-                  _selectedIcon = icon;
-                });
-              },
-              child: Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: isSelected ? _selectedColor : Colors.grey[200],
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Icon(
-                  icon,
-                  size: 16,
-                  color: isSelected ? Colors.white : Colors.grey[600],
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 10),
-
-        // Assign Classes
-        const Text(
-          'Assign Classes',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 4,
+            children: _classList.map((cls) {
+              final isSelected = _selectedClasses.contains(cls);
+              return FilterChip(
+                label: Text(cls, style: const TextStyle(fontSize: 11)),
+                selected: isSelected,
+                onSelected: (selected) {
+                  setState(() {
+                    if (selected) {
+                      _selectedClasses.add(cls);
+                    } else {
+                      _selectedClasses.remove(cls);
+                    }
+                  });
+                },
+                selectedColor: Colors.blue[100],
+                backgroundColor: Colors.grey[100],
+              );
+            }).toList(),
           ),
-        ),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 4,
-          children: _classList.map((cls) {
-            final isSelected = _selectedClasses.contains(cls);
-            return FilterChip(
-              label: Text(cls, style: const TextStyle(fontSize: 11)),
-              selected: isSelected,
-              onSelected: (selected) {
-                setState(() {
-                  if (selected) {
-                    _selectedClasses.add(cls);
-                  } else {
-                    _selectedClasses.remove(cls);
-                  }
-                });
-              },
-              selectedColor: Colors.blue[100],
-              backgroundColor: Colors.grey[100],
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 10),
+          const SizedBox(height: 10),
+        ],
 
         // Assign Teachers
         const Text(
@@ -2062,6 +2048,143 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               backgroundColor: Colors.grey[100],
             );
           }).toList(),
+        ),
+      ],
+    );
+  }
+
+  // ============ BANNER UPLOAD SECTION ============
+  Widget _buildBannerUploadSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.orange[50],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.orange[200]!),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.image, color: Colors.orange[700], size: 16),
+              const SizedBox(width: 8),
+              Text(
+                'Banner Image',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.orange[700],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[50],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey[300]!),
+          ),
+          child: Column(
+            children: [
+              // Banner Preview
+              if (_bannerImage != null || _bannerImagePath != null)
+                Container(
+                  height: 120,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(8),
+                      topRight: Radius.circular(8),
+                    ),
+                    image: DecorationImage(
+                      image: _bannerImage != null
+                          ? FileImage(_bannerImage!)
+                          : FileImage(File(_bannerImagePath!)),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.6),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: IconButton(
+                            onPressed: _removeBannerImage,
+                            icon: const Icon(Icons.close, color: Colors.white, size: 16),
+                            padding: const EdgeInsets.all(4),
+                            constraints: const BoxConstraints(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              // Upload Button
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _pickBannerImage,
+                        icon: Icon(
+                          _bannerImage != null || _bannerImagePath != null
+                              ? Icons.change_circle
+                              : Icons.upload_file,
+                          size: 18,
+                        ),
+                        label: Text(
+                          _bannerImage != null || _bannerImagePath != null
+                              ? 'Change Banner'
+                              : 'Upload Banner',
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange[700],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
+                    if (_bannerImage != null || _bannerImagePath != null)
+                      const SizedBox(width: 8),
+                    if (_bannerImage != null || _bannerImagePath != null)
+                      OutlinedButton(
+                        onPressed: _removeBannerImage,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          side: BorderSide(color: Colors.red[300]!),
+                        ),
+                        child: const Text('Remove'),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Recommended: 800 x 400 pixels, JPG/PNG format',
+          style: TextStyle(
+            fontSize: 10,
+            color: Colors.grey[500],
+          ),
         ),
       ],
     );
