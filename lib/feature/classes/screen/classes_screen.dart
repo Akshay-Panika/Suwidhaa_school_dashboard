@@ -30,6 +30,12 @@ enum ClassStatus {
   completed,
 }
 
+enum SchoolFilter {
+  all,
+  schoolA,
+  schoolB,
+}
+
 // ============ MODEL ============
 class ClassSection {
   final String section;
@@ -128,8 +134,8 @@ class _ClassesScreenState extends State<ClassesScreen> {
   // ============ STATE ============
   List<ClassModel> _classes = [];
   ClassFilter _currentFilter = ClassFilter.all;
+  SchoolFilter _currentSchoolFilter = SchoolFilter.all;
   String _searchQuery = '';
-  String _selectedSchool = 'School A';
   bool _showRightPanel = false;
   ClassModel? _selectedClass;
   bool _isEditing = false;
@@ -306,6 +312,22 @@ class _ClassesScreenState extends State<ClassesScreen> {
         status: ClassStatus.inactive,
         totalStudents: 53,
       ),
+      ClassModel(
+        id: 'CLS006',
+        classLevel: '5th',
+        school: 'School B',
+        sections: [
+          ClassSection(
+            section: 'A',
+            classTeacher: 'Dr. Priya Gupta',
+            teacherId: 'T006',
+            room: '601',
+            subjects: ['Mathematics', 'Science', 'English', 'History', 'Geography'],
+            studentCount: 32,
+          ),
+        ],
+        totalStudents: 32,
+      ),
     ];
   }
 
@@ -313,6 +335,14 @@ class _ClassesScreenState extends State<ClassesScreen> {
   List<ClassModel> get _filteredClasses {
     var filtered = _classes;
 
+    // School Filter
+    if (_currentSchoolFilter == SchoolFilter.schoolA) {
+      filtered = filtered.where((classItem) => classItem.school == 'School A').toList();
+    } else if (_currentSchoolFilter == SchoolFilter.schoolB) {
+      filtered = filtered.where((classItem) => classItem.school == 'School B').toList();
+    }
+
+    // Class Level Filter
     if (_currentFilter != ClassFilter.all) {
       filtered = filtered.where((classItem) {
         final level = classItem.classLevel.toLowerCase();
@@ -337,6 +367,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
       }).toList();
     }
 
+    // Search Filter
     if (_searchQuery.isNotEmpty) {
       filtered = filtered.where((classItem) =>
       classItem.classLevel.toLowerCase().contains(_searchQuery.toLowerCase()) ||
@@ -349,10 +380,6 @@ class _ClassesScreenState extends State<ClassesScreen> {
       ).toList();
     }
 
-    filtered = filtered.where((classItem) =>
-    classItem.school == _selectedSchool
-    ).toList();
-
     return filtered;
   }
 
@@ -361,6 +388,14 @@ class _ClassesScreenState extends State<ClassesScreen> {
   int get _inactiveClasses => _classes.where((c) => c.status == ClassStatus.inactive).length;
   int get _totalStudents => _classes.fold<int>(0, (sum, c) => sum + c.totalStudents);
   int get _totalSections => _classes.fold<int>(0, (sum, c) => sum + c.sections.length);
+
+  Map<String, int> get _schoolWiseStats {
+    Map<String, int> stats = {};
+    for (var classItem in _classes) {
+      stats[classItem.school] = (stats[classItem.school] ?? 0) + 1;
+    }
+    return stats;
+  }
 
   // ============ FORM METHODS ============
   void _resetForm() {
@@ -582,6 +617,14 @@ class _ClassesScreenState extends State<ClassesScreen> {
     );
   }
 
+  Color _getSchoolColor(String school) {
+    switch (school) {
+      case 'School A': return Colors.blue;
+      case 'School B': return Colors.green;
+      default: return Colors.grey;
+    }
+  }
+
   String _getInitials(String name) {
     final parts = name.split(' ');
     if (parts.length >= 2) return parts[0][0] + parts[1][0];
@@ -612,6 +655,13 @@ class _ClassesScreenState extends State<ClassesScreen> {
   // ============ BUILD ============
   @override
   Widget build(BuildContext context) {
+    final schoolStats = _schoolWiseStats;
+    final schoolLabel = _currentSchoolFilter == SchoolFilter.all
+        ? 'All Schools'
+        : _currentSchoolFilter == SchoolFilter.schoolA
+        ? 'School A'
+        : 'School B';
+
     return Scaffold(
       body: Container(
         margin: const EdgeInsets.all(16),
@@ -633,7 +683,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
               flex: _showRightPanel ? 5 : 8,
               child: Column(
                 children: [
-                  _buildHeader(),
+                  _buildHeader(schoolLabel, schoolStats),
                   _buildFilterSearchBar(),
                   Expanded(
                     child: _filteredClasses.isEmpty
@@ -823,7 +873,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
   }
 
   // ============ HEADER ============
-  Widget _buildHeader() {
+  Widget _buildHeader(String schoolLabel, Map<String, int> schoolStats) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -860,13 +910,34 @@ class _ClassesScreenState extends State<ClassesScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Classes Management',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
+                  Row(
+                    children: [
+                      const Text(
+                        'Classes Management',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blue[200]!),
+                        ),
+                        child: Text(
+                          schoolLabel,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.blue[700],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   Text(
                     '${_filteredClasses.length} classes found',
@@ -881,28 +952,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
           ),
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.green[50],
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.circle, size: 6, color: Colors.green[600]),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$_activeClasses Active',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.green[700],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
+
               if (!_showRightPanel || !_isAddingNew)
                 ElevatedButton.icon(
                   onPressed: () {
@@ -979,9 +1029,61 @@ class _ClassesScreenState extends State<ClassesScreen> {
                 ),
               ),
               const SizedBox(width: 10),
-              _buildSchoolButton('School A'),
-              const SizedBox(width: 4),
-              _buildSchoolButton('School B'),
+              Container(
+                height: 36,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[200]!),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<SchoolFilter>(
+                    value: _currentSchoolFilter,
+                    style: const TextStyle(fontSize: 12, color: Colors.black87),
+                    icon: Icon(Icons.school, color: Colors.grey[600], size: 18),
+                    items: [
+                      const DropdownMenuItem(
+                        value: SchoolFilter.all,
+                        child: Row(
+                          children: [
+                            Icon(Icons.school, size: 16, color: Colors.grey),
+                            SizedBox(width: 6),
+                            Text('All Schools'),
+                          ],
+                        ),
+                      ),
+                      const DropdownMenuItem(
+                        value: SchoolFilter.schoolA,
+                        child: Row(
+                          children: [
+                            Icon(Icons.school, size: 16, color: Colors.blue),
+                            SizedBox(width: 6),
+                            Text('School A'),
+                          ],
+                        ),
+                      ),
+                      const DropdownMenuItem(
+                        value: SchoolFilter.schoolB,
+                        child: Row(
+                          children: [
+                            Icon(Icons.school, size: 16, color: Colors.green),
+                            SizedBox(width: 6),
+                            Text('School B'),
+                          ],
+                        ),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _currentSchoolFilter = value!;
+                        _selectedClass = null;
+                        _showRightPanel = false;
+                      });
+                    },
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -1028,43 +1130,36 @@ class _ClassesScreenState extends State<ClassesScreen> {
     );
   }
 
-  Widget _buildSchoolButton(String schoolName) {
-    final isSelected = _selectedSchool == schoolName;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedSchool = schoolName;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.blue[700] : Colors.grey[50],
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? Colors.blue[700]! : Colors.grey[200]!,
-            width: 1,
+  Widget _buildQuickStatChip({
+    required IconData icon,
+    required String label,
+    required int count,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: color.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            '$count $label',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+              color: color,
+            ),
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isSelected ? Icons.school : Icons.school_outlined,
-              size: 14,
-              color: isSelected ? Colors.white : Colors.grey[600],
-            ),
-            const SizedBox(width: 4),
-            Text(
-              schoolName,
-              style: TextStyle(
-                color: isSelected ? Colors.white : Colors.grey[600],
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                fontSize: 11,
-              ),
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -1102,6 +1197,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
   // ============ CLASS CARD ============
   Widget _buildClassCard(ClassModel classItem) {
     final isSelected = _selectedClass?.id == classItem.id;
+    final schoolColor = _getSchoolColor(classItem.school);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -1121,12 +1217,12 @@ class _ClassesScreenState extends State<ClassesScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.blue[50],
+              color: schoolColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               Icons.class_,
-              color: Colors.blue[700],
+              color: schoolColor,
               size: 20,
             ),
           ),
@@ -1182,7 +1278,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
                     spacing: 8,
                     runSpacing: 2,
                     children: [
-                      _buildInfoText(Icons.school, classItem.school),
+                      _buildInfoText(Icons.school, classItem.school, color: schoolColor),
                       _buildInfoText(Icons.view_list, '${classItem.sections.length} Sections'),
                       _buildInfoText(Icons.people, '${classItem.totalStudents} Students'),
                     ],
@@ -1244,17 +1340,17 @@ class _ClassesScreenState extends State<ClassesScreen> {
     );
   }
 
-  Widget _buildInfoText(IconData icon, String text) {
+  Widget _buildInfoText(IconData icon, String text, {Color? color}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 11, color: Colors.grey[500]),
+        Icon(icon, size: 11, color: color ?? Colors.grey[500]),
         const SizedBox(width: 4),
         Text(
           text,
           style: TextStyle(
             fontSize: 10,
-            color: Colors.grey[600],
+            color: color ?? Colors.grey[600],
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -1324,6 +1420,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
     if (_selectedClass == null) return const SizedBox();
 
     final classItem = _selectedClass!;
+    final schoolColor = _getSchoolColor(classItem.school);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -1337,12 +1434,12 @@ class _ClassesScreenState extends State<ClassesScreen> {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: Colors.blue[50],
+                  color: schoolColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   Icons.class_,
-                  color: Colors.blue[700],
+                  color: schoolColor,
                   size: 28,
                 ),
               ),
@@ -1362,6 +1459,29 @@ class _ClassesScreenState extends State<ClassesScreen> {
                     const SizedBox(height: 4),
                     Row(
                       children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: schoolColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: schoolColor.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.school, size: 12, color: schoolColor),
+                              const SizedBox(width: 4),
+                              Text(
+                                classItem.school,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: schoolColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
@@ -1406,9 +1526,10 @@ class _ClassesScreenState extends State<ClassesScreen> {
           const SizedBox(height: 16),
 
           // Info
-          _buildDetailRow('🏫 School', classItem.school),
+          _buildDetailRow('🏫 School', classItem.school, color: schoolColor, isBold: true),
           _buildDetailRow('📚 Total Students', classItem.totalStudents.toString()),
           _buildDetailRow('📋 Total Sections', classItem.sections.length.toString()),
+          _buildDetailRow('📊 Status', classItem.statusDisplay, color: classItem.statusColor),
 
           const SizedBox(height: 12),
           const Divider(),
@@ -1541,7 +1662,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow(String label, String value, {Color? color, bool isBold = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
@@ -1561,9 +1682,10 @@ class _ClassesScreenState extends State<ClassesScreen> {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
-                color: Colors.black87,
+                color: color ?? Colors.black87,
+                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
               ),
             ),
           ),
@@ -1905,7 +2027,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
             onChanged: (value) => _updateSectionField(index, 'studentCount', value),
           ),
           const SizedBox(height: 4),
-           Text(
+          Text(
             'Subjects:',
             style: TextStyle(
               fontSize: 11,

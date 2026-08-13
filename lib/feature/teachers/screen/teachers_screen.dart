@@ -13,6 +13,12 @@ enum TeacherFilter {
   retired,
 }
 
+enum SchoolFilter {
+  all,
+  schoolA,
+  schoolB,
+}
+
 // ============ MODEL ============
 class TeacherModel {
   final String id;
@@ -33,6 +39,7 @@ class TeacherModel {
   final String? firstName;
   final String? middleName;
   final String? lastName;
+  final String school;
 
   TeacherModel({
     required this.id,
@@ -53,6 +60,7 @@ class TeacherModel {
     this.firstName,
     this.middleName,
     this.lastName,
+    this.school = 'School A',
   });
 
   Map<String, dynamic> toJson() => {
@@ -74,6 +82,7 @@ class TeacherModel {
     'firstName': firstName,
     'middleName': middleName,
     'lastName': lastName,
+    'school': school,
   };
 
   factory TeacherModel.fromJson(Map<String, dynamic> json) => TeacherModel(
@@ -95,6 +104,7 @@ class TeacherModel {
     firstName: json['firstName'],
     middleName: json['middleName'],
     lastName: json['lastName'],
+    school: json['school'] ?? 'School A',
   );
 }
 
@@ -110,6 +120,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
   // ============ STATE ============
   List<TeacherModel> _teachers = [];
   TeacherFilter _currentFilter = TeacherFilter.all;
+  SchoolFilter _currentSchoolFilter = SchoolFilter.all;
   String _searchQuery = '';
   bool _showRightPanel = false;
   TeacherModel? _selectedTeacher;
@@ -141,6 +152,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
   // ============ FORM STATE ============
   String _selectedGender = 'Male';
   String _selectedStatus = 'Active';
+  String _selectedSchoolForm = 'School A';
   List<String> _selectedSubjects = [];
   File? _imageFile;
 
@@ -152,9 +164,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
   ];
   final List<String> _genderList = ['Male', 'Female', 'Other'];
   final List<String> _statusList = ['Active', 'Inactive', 'On Leave', 'Retired'];
-  final List<Color> _statusColors = [
-    Colors.green, Colors.red, Colors.orange, Colors.grey
-  ];
+  final List<String> _schoolList = ['School A', 'School B'];
 
   @override
   void initState() {
@@ -183,6 +193,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
   // ============ SAMPLE DATA ============
   void _loadSampleData() {
     _teachers = [
+      // ===== School A Teachers =====
       TeacherModel(
         id: 'T001',
         name: 'Dr. Rajesh Kumar',
@@ -200,6 +211,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
         joinDate: 'Jan 2010',
         firstName: 'Rajesh',
         lastName: 'Kumar',
+        school: 'School A',
       ),
       TeacherModel(
         id: 'T002',
@@ -218,6 +230,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
         joinDate: 'Mar 2014',
         firstName: 'Meera',
         lastName: 'Singh',
+        school: 'School A',
       ),
       TeacherModel(
         id: 'T003',
@@ -236,6 +249,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
         joinDate: 'Jun 2012',
         firstName: 'Suresh',
         lastName: 'Patel',
+        school: 'School A',
       ),
       TeacherModel(
         id: 'T004',
@@ -254,6 +268,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
         joinDate: 'Aug 2016',
         firstName: 'Anita',
         lastName: 'Sharma',
+        school: 'School A',
       ),
       TeacherModel(
         id: 'T005',
@@ -272,7 +287,9 @@ class _TeachersScreenState extends State<TeachersScreen> {
         joinDate: 'Jan 2017',
         firstName: 'Vikram',
         lastName: 'Reddy',
+        school: 'School A',
       ),
+      // ===== School B Teachers =====
       TeacherModel(
         id: 'T006',
         name: 'Dr. Priya Gupta',
@@ -290,6 +307,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
         joinDate: 'Mar 2015',
         firstName: 'Priya',
         lastName: 'Gupta',
+        school: 'School B',
       ),
       TeacherModel(
         id: 'T007',
@@ -308,6 +326,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
         joinDate: 'Jul 2013',
         firstName: 'Arjun',
         lastName: 'Nair',
+        school: 'School B',
       ),
       TeacherModel(
         id: 'T008',
@@ -326,6 +345,26 @@ class _TeachersScreenState extends State<TeachersScreen> {
         joinDate: 'Aug 2020',
         firstName: 'Kavya',
         lastName: 'Reddy',
+        school: 'School B',
+      ),
+      TeacherModel(
+        id: 'T009',
+        name: 'Dr. Anil Kumar',
+        subjects: ['English', 'Literature'],
+        email: 'anil@school.com',
+        phone: '+91 98765 43218',
+        altPhone: '+91 98765 43219',
+        classes: '11-A, 11-B',
+        experience: '15 Years',
+        qualification: 'Ph.D. in English',
+        gender: 'Male',
+        dob: '15 Jan 1978',
+        address: '789, Literature Lane, Delhi',
+        status: 'Retired',
+        joinDate: 'Jan 2005',
+        firstName: 'Anil',
+        lastName: 'Kumar',
+        school: 'School B',
       ),
     ];
   }
@@ -397,6 +436,14 @@ class _TeachersScreenState extends State<TeachersScreen> {
   List<TeacherModel> get _filteredTeachers {
     var filtered = _teachers;
 
+    // School Filter
+    if (_currentSchoolFilter == SchoolFilter.schoolA) {
+      filtered = filtered.where((teacher) => teacher.school == 'School A').toList();
+    } else if (_currentSchoolFilter == SchoolFilter.schoolB) {
+      filtered = filtered.where((teacher) => teacher.school == 'School B').toList();
+    }
+
+    // Status Filter
     if (_currentFilter != TeacherFilter.all) {
       filtered = filtered.where((teacher) {
         if (_currentFilter == TeacherFilter.active) {
@@ -411,13 +458,15 @@ class _TeachersScreenState extends State<TeachersScreen> {
       }).toList();
     }
 
+    // Search Filter
     if (_searchQuery.isNotEmpty) {
       filtered = filtered.where((teacher) =>
       teacher.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           teacher.id.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           teacher.subjects.any((s) => s.toLowerCase().contains(_searchQuery.toLowerCase())) ||
           teacher.classes.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          teacher.email.toLowerCase().contains(_searchQuery.toLowerCase())
+          teacher.email.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          teacher.school.toLowerCase().contains(_searchQuery.toLowerCase())
       ).toList();
     }
 
@@ -428,6 +477,14 @@ class _TeachersScreenState extends State<TeachersScreen> {
   int get _activeTeachers => _teachers.where((t) => t.status == 'Active').length;
   int get _onLeaveTeachers => _teachers.where((t) => t.status == 'On Leave').length;
   int get _inactiveTeachers => _teachers.where((t) => t.status == 'Inactive').length;
+
+  Map<String, int> get _schoolWiseStats {
+    Map<String, int> stats = {};
+    for (var teacher in _teachers) {
+      stats[teacher.school] = (stats[teacher.school] ?? 0) + 1;
+    }
+    return stats;
+  }
 
   // ============ FORM METHODS ============
   void _resetForm() {
@@ -446,6 +503,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
     _selectedSubjects = [];
     _selectedGender = 'Male';
     _selectedStatus = 'Active';
+    _selectedSchoolForm = 'School A';
     _imageFile = null;
   }
 
@@ -466,6 +524,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
     _selectedSubjects = List.from(teacher.subjects);
     _selectedGender = teacher.gender;
     _selectedStatus = teacher.status;
+    _selectedSchoolForm = teacher.school;
     _imageFile = teacher.photo != null ? File(teacher.photo!) : null;
   }
 
@@ -494,6 +553,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
       firstName: _firstNameController.text.trim(),
       middleName: _middleNameController.text.trim(),
       lastName: _lastNameController.text.trim(),
+      school: _selectedSchoolForm,
     );
   }
 
@@ -608,6 +668,14 @@ class _TeachersScreenState extends State<TeachersScreen> {
     }
   }
 
+  Color _getSchoolColor(String school) {
+    switch (school) {
+      case 'School A': return Colors.blue;
+      case 'School B': return Colors.green;
+      default: return Colors.grey;
+    }
+  }
+
   String _getInitials(String name) {
     final parts = name.split(' ');
     if (parts.length >= 2) return parts[0][0] + parts[1][0];
@@ -625,6 +693,13 @@ class _TeachersScreenState extends State<TeachersScreen> {
   // ============ BUILD ============
   @override
   Widget build(BuildContext context) {
+    final schoolStats = _schoolWiseStats;
+    final schoolLabel = _currentSchoolFilter == SchoolFilter.all
+        ? 'All Schools'
+        : _currentSchoolFilter == SchoolFilter.schoolA
+        ? 'School A'
+        : 'School B';
+
     return Scaffold(
       body: Container(
         margin: const EdgeInsets.all(16),
@@ -646,7 +721,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
               flex: _showRightPanel ? 5 : 8,
               child: Column(
                 children: [
-                  _buildHeader(),
+                  _buildHeader(schoolLabel, schoolStats),
                   _buildFilterSearchBar(),
                   Expanded(
                     child: _filteredTeachers.isEmpty
@@ -839,7 +914,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
   }
 
   // ============ HEADER ============
-  Widget _buildHeader() {
+  Widget _buildHeader(String schoolLabel, Map<String, int> schoolStats) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -876,13 +951,34 @@ class _TeachersScreenState extends State<TeachersScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Teachers Management',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
+                  Row(
+                    children: [
+                      const Text(
+                        'Teachers Management',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.purple[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.purple[200]!),
+                        ),
+                        child: Text(
+                          schoolLabel,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.purple[700],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   Text(
                     '${_filteredTeachers.length} teachers found',
@@ -897,25 +993,60 @@ class _TeachersScreenState extends State<TeachersScreen> {
           ),
           Row(
             children: [
+              // School Filter Dropdown
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                height: 36,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
-                  color: Colors.green[50],
-                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[200]!),
                 ),
-                child: Row(
-                  children: [
-                    Icon(Icons.circle, size: 6, color: Colors.green[600]),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$_activeTeachers Active',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.green[700],
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<SchoolFilter>(
+                    value: _currentSchoolFilter,
+                    style: const TextStyle(fontSize: 12, color: Colors.black87),
+                    icon: Icon(Icons.school, color: Colors.grey[600], size: 18),
+                    items: [
+                      const DropdownMenuItem(
+                        value: SchoolFilter.all,
+                        child: Row(
+                          children: [
+                            Icon(Icons.school, size: 16, color: Colors.grey),
+                            SizedBox(width: 6),
+                            Text('All Schools'),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                      const DropdownMenuItem(
+                        value: SchoolFilter.schoolA,
+                        child: Row(
+                          children: [
+                            Icon(Icons.school, size: 16, color: Colors.blue),
+                            SizedBox(width: 6),
+                            Text('School A'),
+                          ],
+                        ),
+                      ),
+                      const DropdownMenuItem(
+                        value: SchoolFilter.schoolB,
+                        child: Row(
+                          children: [
+                            Icon(Icons.school, size: 16, color: Colors.green),
+                            SizedBox(width: 6),
+                            Text('School B'),
+                          ],
+                        ),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _currentSchoolFilter = value!;
+                        _selectedTeacher = null;
+                        _showRightPanel = false;
+                      });
+                    },
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -1009,6 +1140,11 @@ class _TeachersScreenState extends State<TeachersScreen> {
 
   Widget _buildFilterChip(String label, TeacherFilter filter) {
     final isSelected = _currentFilter == filter;
+    Color color = Colors.purple;
+    if (filter == TeacherFilter.active) color = Colors.green;
+    if (filter == TeacherFilter.inactive) color = Colors.red;
+    if (filter == TeacherFilter.onLeave) color = Colors.orange;
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -1018,10 +1154,10 @@ class _TeachersScreenState extends State<TeachersScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.purple[700] : Colors.grey[50],
+          color: isSelected ? color : Colors.grey[50],
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? Colors.purple[700]! : Colors.grey[200]!,
+            color: isSelected ? color : Colors.grey[200]!,
             width: 1,
           ),
         ),
@@ -1040,6 +1176,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
   // ============ TEACHER CARD ============
   Widget _buildTeacherCard(TeacherModel teacher) {
     final isSelected = _selectedTeacher?.id == teacher.id;
+    final schoolColor = _getSchoolColor(teacher.school);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -1126,6 +1263,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
                     spacing: 8,
                     runSpacing: 2,
                     children: [
+                      _buildInfoText(Icons.school, teacher.school, color: schoolColor),
                       _buildInfoText(Icons.book, teacher.subjects.take(2).join(', ')),
                       _buildInfoText(Icons.class_, teacher.classes),
                       _buildInfoText(Icons.work, teacher.experience),
@@ -1214,17 +1352,17 @@ class _TeachersScreenState extends State<TeachersScreen> {
     );
   }
 
-  Widget _buildInfoText(IconData icon, String text) {
+  Widget _buildInfoText(IconData icon, String text, {Color? color}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 11, color: Colors.grey[500]),
+        Icon(icon, size: 11, color: color ?? Colors.grey[500]),
         const SizedBox(width: 4),
         Text(
           text,
           style: TextStyle(
             fontSize: 10,
-            color: Colors.grey[600],
+            color: color ?? Colors.grey[600],
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -1295,6 +1433,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
     if (_selectedTeacher == null) return const SizedBox();
 
     final teacher = _selectedTeacher!;
+    final schoolColor = _getSchoolColor(teacher.school);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -1341,6 +1480,29 @@ class _TeachersScreenState extends State<TeachersScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
+                            color: schoolColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: schoolColor.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.school, size: 12, color: schoolColor),
+                              const SizedBox(width: 4),
+                              Text(
+                                teacher.school,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: schoolColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
                             color: _getStatusColor(teacher.status).withOpacity(0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -1380,6 +1542,9 @@ class _TeachersScreenState extends State<TeachersScreen> {
           const SizedBox(height: 20),
           const Divider(),
           const SizedBox(height: 16),
+
+          // School Info
+          _buildDetailRow('🏫 School', teacher.school, color: schoolColor, isBold: true),
 
           // Personal Info
           _buildDetailRow('📛 Name', teacher.name),
@@ -1473,7 +1638,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow(String label, String value, {Color? color, bool isBold = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -1493,9 +1658,10 @@ class _TeachersScreenState extends State<TeachersScreen> {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
-                color: Colors.black87,
+                color: color ?? Colors.black87,
+                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
               ),
             ),
           ),
@@ -2045,6 +2211,38 @@ class _TeachersScreenState extends State<TeachersScreen> {
         ),
         const SizedBox(height: 16),
 
+        // School Selection
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.blue[50],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.blue[200]!),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.school, color: Colors.blue[700], size: 16),
+              const SizedBox(width: 8),
+              Text(
+                'School Information',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.blue[700],
+                ),
+              ),
+              const Spacer(),
+              SizedBox(
+                width: 140,
+                child: _buildDropdownField('', _schoolList, _selectedSchoolForm, (value) {
+                  setState(() => _selectedSchoolForm = value!);
+                }, isCompact: true),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+
         // Personal Information
         Container(
           padding: const EdgeInsets.all(12),
@@ -2319,11 +2517,11 @@ class _TeachersScreenState extends State<TeachersScreen> {
   }
 
   Widget _buildDropdownField(String label, List<String> items, String value,
-      Function(String?) onChanged) {
+      Function(String?) onChanged, {bool isCompact = false}) {
     return DropdownButtonFormField<String>(
       value: value,
       decoration: InputDecoration(
-        labelText: label,
+        labelText: label.isNotEmpty ? label : null,
         labelStyle: TextStyle(fontSize: 12, color: Colors.grey[600]),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -2337,12 +2535,15 @@ class _TeachersScreenState extends State<TeachersScreen> {
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: Colors.purple[700]!),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        contentPadding: isCompact
+            ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
+            : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        isDense: isCompact,
       ),
       items: items.map((item) {
         return DropdownMenuItem(
           value: item,
-          child: Text(item, style: const TextStyle(fontSize: 13)),
+          child: Text(item, style: TextStyle(fontSize: isCompact ? 12 : 13)),
         );
       }).toList(),
       onChanged: onChanged,

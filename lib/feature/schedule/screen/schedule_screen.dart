@@ -14,6 +14,12 @@ enum ScheduleFilter {
   other,
 }
 
+enum SchoolFilter {
+  all,
+  schoolA,
+  schoolB,
+}
+
 // ============ MODEL ============
 class ScheduleModel {
   final String id;
@@ -41,6 +47,7 @@ class ScheduleModel {
   final String? eventDescription;
   final String? examInstructions;
   final String? otherNotes;
+  final String school;
 
   ScheduleModel({
     required this.id,
@@ -68,6 +75,7 @@ class ScheduleModel {
     this.eventDescription,
     this.examInstructions,
     this.otherNotes,
+    this.school = 'School A',
   });
 
   String get typeDisplay {
@@ -98,6 +106,7 @@ class ScheduleScreen extends StatefulWidget {
 class _ScheduleScreenState extends State<ScheduleScreen> {
   List<ScheduleModel> schedules = [];
   ScheduleFilter _currentFilter = ScheduleFilter.all;
+  SchoolFilter _currentSchoolFilter = SchoolFilter.all;
   String _searchQuery = '';
   bool _showRightPanel = false;
   ScheduleModel? _selectedSchedule;
@@ -126,11 +135,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now().add(const Duration(days: 1));
   Color _selectedColor = Colors.blue;
+  String _selectedSchoolForm = 'School A';
   List<String> _selectedClasses = [];
   List<String> _selectedTeachers = [];
 
   final List<String> _classList = ['Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5'];
   final List<String> _teacherList = ['Mr. John', 'Ms. Sarah', 'Dr. Smith', 'Mrs. Brown'];
+  final List<String> _schoolList = ['School A', 'School B'];
 
   final List<Color> _colors = [
     Colors.blue, Colors.red, Colors.green, Colors.orange,
@@ -173,6 +184,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   void _loadSampleData() {
     schedules = [
+      // School A Schedules
       ScheduleModel(
         id: '1',
         title: 'Annual Sports Day',
@@ -184,6 +196,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         location: 'School Ground',
         color: Colors.blue,
         icon: Icons.sports,
+        school: 'School A',
         eventType: 'Sports Event',
         guestSpeaker: 'Mr. Sports Coach',
         expectedAttendees: '500+ Students',
@@ -202,6 +215,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         location: 'School Classrooms',
         color: Colors.red,
         icon: Icons.school,
+        school: 'School A',
         examType: 'Mid Term',
         subjects: 'All Subjects',
         examDuration: '3 Hours',
@@ -220,6 +234,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         location: 'School Auditorium',
         color: Colors.green,
         icon: Icons.people,
+        school: 'School A',
         otherType: 'Meeting',
         organizer: 'School Administration',
         contactPerson: 'Principal Office',
@@ -238,6 +253,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         location: 'Science Lab & Hall',
         color: Colors.purple,
         icon: Icons.science,
+        school: 'School A',
         eventType: 'Exhibition',
         guestSpeaker: 'Dr. Science Expert',
         expectedAttendees: '300+ Students',
@@ -245,6 +261,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         assignedClasses: ['Class 3', 'Class 4', 'Class 5'],
         assignedTeachers: ['Mr. John', 'Dr. Smith'],
       ),
+      // School B Schedules
       ScheduleModel(
         id: '5',
         title: 'Final Exam Time Table',
@@ -256,6 +273,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         location: 'All Classrooms',
         color: Colors.orange,
         icon: Icons.calendar_today,
+        school: 'School B',
         examType: 'Final',
         subjects: 'All Subjects',
         examDuration: '3 Hours',
@@ -274,6 +292,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         location: 'Conference Room',
         color: Colors.teal,
         icon: Icons.circle,
+        school: 'School B',
         otherType: 'Workshop',
         organizer: 'HR Department',
         contactPerson: 'Training Coordinator',
@@ -291,6 +310,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         location: 'School Auditorium',
         color: Colors.pink,
         icon: Icons.music_note,
+        school: 'School B',
         eventType: 'Cultural Event',
         guestSpeaker: 'Chief Guest',
         expectedAttendees: '1000+ People',
@@ -304,6 +324,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   List<ScheduleModel> get _filteredSchedules {
     var filtered = schedules;
 
+    // School Filter
+    if (_currentSchoolFilter == SchoolFilter.schoolA) {
+      filtered = filtered.where((schedule) => schedule.school == 'School A').toList();
+    } else if (_currentSchoolFilter == SchoolFilter.schoolB) {
+      filtered = filtered.where((schedule) => schedule.school == 'School B').toList();
+    }
+
+    // Type Filter
     if (_currentFilter != ScheduleFilter.all) {
       filtered = filtered.where((schedule) {
         if (_currentFilter == ScheduleFilter.event) {
@@ -316,11 +344,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       }).toList();
     }
 
+    // Search Filter
     if (_searchQuery.isNotEmpty) {
       filtered = filtered.where((schedule) =>
       schedule.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           schedule.description.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          schedule.location.toLowerCase().contains(_searchQuery.toLowerCase())
+          schedule.location.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          schedule.school.toLowerCase().contains(_searchQuery.toLowerCase())
       ).toList();
     }
 
@@ -331,6 +361,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   int get _totalExams => schedules.where((s) => s.type == ScheduleType.exam).length;
   int get _totalOthers => schedules.where((s) => s.type == ScheduleType.other).length;
   int get _upcomingCount => schedules.where((s) => s.startDate.isAfter(DateTime.now())).length;
+
+  Map<String, int> get _schoolWiseStats {
+    Map<String, int> stats = {};
+    for (var schedule in schedules) {
+      stats[schedule.school] = (stats[schedule.school] ?? 0) + 1;
+    }
+    return stats;
+  }
 
   void _resetForm() {
     _titleController.clear();
@@ -354,6 +392,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     _endDate = DateTime.now().add(const Duration(days: 1));
     _selectedColor = Colors.blue;
     _selectedIcon = Icons.event;
+    _selectedSchoolForm = 'School A';
     _selectedClasses = [];
     _selectedTeachers = [];
   }
@@ -368,6 +407,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     _endDate = schedule.endDate;
     _selectedColor = schedule.color;
     _selectedIcon = schedule.icon;
+    _selectedSchoolForm = schedule.school;
     _selectedClasses = schedule.assignedClasses ?? [];
     _selectedTeachers = schedule.assignedTeachers ?? [];
 
@@ -401,6 +441,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       location: _locationController.text,
       color: _selectedColor,
       icon: _selectedIcon,
+      school: _selectedSchoolForm,
       assignedClasses: _selectedClasses.isNotEmpty ? _selectedClasses : null,
       assignedTeachers: _selectedTeachers.isNotEmpty ? _selectedTeachers : null,
       eventType: _selectedType == ScheduleType.event ? _eventTypeController.text : null,
@@ -420,6 +461,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final schoolStats = _schoolWiseStats;
+    final schoolLabel = _currentSchoolFilter == SchoolFilter.all
+        ? 'All Schools'
+        : _currentSchoolFilter == SchoolFilter.schoolA
+        ? 'School A'
+        : 'School B';
+
     return Scaffold(
       body: Container(
         margin: const EdgeInsets.all(16),
@@ -441,7 +489,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               flex: _showRightPanel ? 5 : 8,
               child: Column(
                 children: [
-                  _buildHeader(),
+                  _buildHeader(schoolLabel, schoolStats),
                   _buildFilterSearchBar(),
                   Expanded(
                     child: _filteredSchedules.isEmpty
@@ -631,7 +679,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   // ============ HEADER ============
-  Widget _buildHeader() {
+  Widget _buildHeader(String schoolLabel, Map<String, int> schoolStats) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -689,50 +737,87 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           ),
           Row(
             children: [
+              // School Filter Dropdown - SINGLE FILTER
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                height: 36,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
-                  color: Colors.green[50],
-                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[200]!),
                 ),
-                child: Row(
-                  children: [
-                    Icon(Icons.circle, size: 6, color: Colors.green[600]),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$_upcomingCount Upcoming',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.green[700],
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<SchoolFilter>(
+                    value: _currentSchoolFilter,
+                    style: const TextStyle(fontSize: 12, color: Colors.black87),
+                    icon: Icon(Icons.arrow_drop_down, color: Colors.grey[600], size: 20),
+                    items: [
+                      const DropdownMenuItem(
+                        value: SchoolFilter.all,
+                        child: Row(
+                          children: [
+                            Icon(Icons.school, size: 16, color: Colors.grey),
+                            SizedBox(width: 6),
+                            Text('All Schools'),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: () {
-                  _resetForm();
-                  setState(() {
-                    _isAddingNew = true;
-                    _isEditing = false;
-                    _selectedSchedule = null;
-                    _showRightPanel = true;
-                  });
-                },
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Add New'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue[700],
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                      const DropdownMenuItem(
+                        value: SchoolFilter.schoolA,
+                        child: Row(
+                          children: [
+                            Icon(Icons.school, size: 16, color: Colors.blue),
+                            SizedBox(width: 6),
+                            Text('School A'),
+                          ],
+                        ),
+                      ),
+                      const DropdownMenuItem(
+                        value: SchoolFilter.schoolB,
+                        child: Row(
+                          children: [
+                            Icon(Icons.school, size: 16, color: Colors.green),
+                            SizedBox(width: 6),
+                            Text('School B'),
+                          ],
+                        ),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _currentSchoolFilter = value!;
+                        _selectedSchedule = null;
+                        _showRightPanel = false;
+                      });
+                    },
                   ),
-                  elevation: 0,
                 ),
               ),
+
+              const SizedBox(width: 8),
+              if (!_showRightPanel || !_isAddingNew)
+                ElevatedButton.icon(
+                  onPressed: () {
+                    _resetForm();
+                    setState(() {
+                      _isAddingNew = true;
+                      _isEditing = false;
+                      _selectedSchedule = null;
+                      _showRightPanel = true;
+                    });
+                  },
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Add New'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[700],
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
               if (_showRightPanel)
                 IconButton(
                   onPressed: () {
@@ -750,6 +835,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         ],
       ),
     );
+  }
+
+  Color _getSchoolColor(String school) {
+    switch (school) {
+      case 'School A': return Colors.blue;
+      case 'School B': return Colors.green;
+      default: return Colors.grey;
+    }
   }
 
   // ============ FILTER AND SEARCH ============
@@ -798,6 +891,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   Widget _buildFilterChip(String label, ScheduleFilter filter) {
     final isSelected = _currentFilter == filter;
+    Color color = Colors.blue;
+    if (filter == ScheduleFilter.event) color = Colors.blue;
+    if (filter == ScheduleFilter.exam) color = Colors.red;
+    if (filter == ScheduleFilter.other) color = Colors.green;
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -807,10 +905,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.blue[700] : Colors.grey[50],
+          color: isSelected ? color : Colors.grey[50],
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? Colors.blue[700]! : Colors.grey[200]!,
+            color: isSelected ? color : Colors.grey[200]!,
             width: 1,
           ),
         ),
@@ -826,9 +924,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
-  // ============ SCHEDULE CARD WITH EDIT AND DELETE ICONS ============
+  // ============ SCHEDULE CARD ============
   Widget _buildScheduleCard(ScheduleModel schedule) {
     final isSelected = _selectedSchedule?.id == schedule.id;
+    final schoolColor = _getSchoolColor(schedule.school);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -909,6 +1008,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     spacing: 8,
                     runSpacing: 2,
                     children: [
+                      _buildInfoText(Icons.school, schedule.school, color: schoolColor),
                       _buildInfoText(Icons.calendar_today,
                           '${schedule.startDate.day}/${schedule.startDate.month}/${schedule.startDate.year}'),
                       _buildInfoText(Icons.access_time, schedule.time),
@@ -924,7 +1024,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Edit Button
               Container(
                 decoration: BoxDecoration(
                   color: Colors.blue[50],
@@ -950,7 +1049,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 ),
               ),
               const SizedBox(width: 4),
-              // Delete Button
               Container(
                 decoration: BoxDecoration(
                   color: Colors.red[50],
@@ -974,17 +1072,17 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
-  Widget _buildInfoText(IconData icon, String text) {
+  Widget _buildInfoText(IconData icon, String text, {Color? color}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 11, color: Colors.grey[500]),
+        Icon(icon, size: 11, color: color ?? Colors.grey[500]),
         const SizedBox(width: 4),
         Text(
           text,
           style: TextStyle(
             fontSize: 10,
-            color: Colors.grey[600],
+            color: color ?? Colors.grey[600],
           ),
         ),
       ],
@@ -1052,6 +1150,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     if (_selectedSchedule == null) return const SizedBox();
 
     final schedule = _selectedSchedule!;
+    final schoolColor = _getSchoolColor(schedule.school);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -1092,6 +1191,29 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
+                            color: schoolColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: schoolColor.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.school, size: 12, color: schoolColor),
+                              const SizedBox(width: 4),
+                              Text(
+                                schedule.school,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: schoolColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
                             color: schedule.color.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -1118,6 +1240,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           const Divider(),
           const SizedBox(height: 16),
 
+          _buildDetailRow('🏫 School', schedule.school, color: schoolColor, isBold: true),
           _buildDetailRow('📅 Date Range',
               '${schedule.startDate.day}/${schedule.startDate.month}/${schedule.startDate.year} - '
                   '${schedule.endDate.day}/${schedule.endDate.month}/${schedule.endDate.year}'),
@@ -1214,6 +1337,38 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
+  Widget _buildDetailRow(String label, String value, {Color? color, bool isBold = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[600],
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 13,
+                color: color ?? Colors.black87,
+                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStatusBadge(ScheduleModel schedule) {
     final isUpcoming = schedule.startDate.isAfter(DateTime.now());
     final isOngoing = schedule.startDate.isBefore(DateTime.now()) &&
@@ -1246,37 +1401,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           fontWeight: FontWeight.w600,
           color: color,
         ),
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[600],
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 13,
-                color: Colors.black87,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1628,6 +1752,38 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // School Selection
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.blue[50],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.blue[200]!),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.school, color: Colors.blue[700], size: 16),
+              const SizedBox(width: 8),
+              Text(
+                'School Information',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.blue[700],
+                ),
+              ),
+              const Spacer(),
+              SizedBox(
+                width: 140,
+                child: _buildDropdownField('', _schoolList, _selectedSchoolForm, (value) {
+                  setState(() => _selectedSchoolForm = value!);
+                }, isCompact: true),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+
         // Type Selector
         const Text(
           'Schedule Type',
@@ -2072,6 +2228,52 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
+  Widget _buildDropdownField(String label, List<String> items, String value,
+      Function(String?) onChanged, {bool isCompact = false}) {
+    return DropdownButtonFormField<String>(
+      value: items.contains(value) ? value : items.first,
+      style: const TextStyle(fontSize: 13),
+      decoration: InputDecoration(
+        labelText: label.isNotEmpty ? label : null,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Colors.blue, width: 1),
+        ),
+        contentPadding: isCompact
+            ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
+            : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        isDense: isCompact,
+        filled: true,
+        fillColor: Colors.grey[50],
+        labelStyle: TextStyle(
+          fontSize: 12,
+          color: Colors.grey[600],
+        ),
+        floatingLabelStyle: const TextStyle(
+          color: Colors.blue,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      items: items.map((String item) {
+        return DropdownMenuItem<String>(
+          value: item,
+          child: Text(item, style: TextStyle(fontSize: isCompact ? 12 : 13)),
+        );
+      }).toList(),
+      onChanged: onChanged,
+      dropdownColor: Colors.white,
+      borderRadius: BorderRadius.circular(8),
+    );
+  }
+
   Widget _buildDatePicker(String label, DateTime date, Function(DateTime) onChanged) {
     return InkWell(
       onTap: () async {
@@ -2143,7 +2345,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             onPressed: () {
               setState(() {
                 schedules.removeWhere((s) => s.id == id);
-                // If the deleted schedule was selected, clear selection
                 if (_selectedSchedule?.id == id) {
                   _showRightPanel = false;
                   _selectedSchedule = null;

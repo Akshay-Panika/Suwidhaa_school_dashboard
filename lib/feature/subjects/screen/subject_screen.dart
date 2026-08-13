@@ -24,6 +24,12 @@ enum SubjectStatus {
   completed,
 }
 
+enum SchoolFilter {
+  all,
+  schoolA,
+  schoolB,
+}
+
 // ============ MODEL ============
 class ClassAssignment {
   final String classLevel;
@@ -66,6 +72,7 @@ class SubjectModel {
   final SubjectStatus status;
   final String? photo;
   final List<ClassAssignment> classAssignments;
+  final String school;
 
   SubjectModel({
     required this.id,
@@ -76,6 +83,7 @@ class SubjectModel {
     this.status = SubjectStatus.active,
     this.photo,
     this.classAssignments = const [],
+    this.school = 'School A',
   });
 
   Map<String, dynamic> toJson() => {
@@ -87,6 +95,7 @@ class SubjectModel {
     'status': status.toString().split('.').last,
     'photo': photo,
     'classAssignments': classAssignments.map((a) => a.toJson()).toList(),
+    'school': school,
   };
 
   factory SubjectModel.fromJson(Map<String, dynamic> json) => SubjectModel(
@@ -103,6 +112,7 @@ class SubjectModel {
     classAssignments: (json['classAssignments'] as List)
         .map((a) => ClassAssignment.fromJson(a))
         .toList(),
+    school: json['school'] ?? 'School A',
   );
 
   String get statusDisplay => status.toString().split('.').last;
@@ -128,6 +138,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
   // ============ STATE ============
   List<SubjectModel> _subjects = [];
   SubjectFilter _currentFilter = SubjectFilter.all;
+  SchoolFilter _currentSchoolFilter = SchoolFilter.all;
   String _searchQuery = '';
   bool _showRightPanel = false;
   SubjectModel? _selectedSubject;
@@ -142,6 +153,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
 
   // ============ FORM STATE ============
   SubjectStatus _selectedStatus = SubjectStatus.active;
+  String _selectedSchoolForm = 'School A';
   List<String> _selectedTeachers = [];
   List<ClassAssignment> _formAssignments = [];
   File? _imageFile;
@@ -164,18 +176,19 @@ class _SubjectScreenState extends State<SubjectScreen> {
     '2:45 PM - 3:30 PM',
   ];
   final List<String> _statusList = ['Active', 'Inactive', 'Upcoming', 'Completed'];
+  final List<String> _schoolList = ['School A', 'School B'];
 
   final List<Map<String, String>> _availableTeachers = [
-    {'id': 'T001', 'name': 'Dr. Rajesh Kumar', 'subject': 'Mathematics'},
-    {'id': 'T002', 'name': 'Ms. Meera Singh', 'subject': 'Science'},
-    {'id': 'T003', 'name': 'Mr. Suresh Patel', 'subject': 'English'},
-    {'id': 'T004', 'name': 'Mrs. Anita Sharma', 'subject': 'History'},
-    {'id': 'T005', 'name': 'Mr. Vikram Reddy', 'subject': 'Computer Science'},
-    {'id': 'T006', 'name': 'Dr. Priya Gupta', 'subject': 'Biology'},
-    {'id': 'T007', 'name': 'Mr. Arjun Nair', 'subject': 'Physics'},
-    {'id': 'T008', 'name': 'Ms. Kavya Reddy', 'subject': 'Chemistry'},
-    {'id': 'T009', 'name': 'Mr. Amit Singh', 'subject': 'Geography'},
-    {'id': 'T010', 'name': 'Ms. Neha Sharma', 'subject': 'Art'},
+    {'id': 'T001', 'name': 'Dr. Rajesh Kumar', 'subject': 'Mathematics', 'school': 'School A'},
+    {'id': 'T002', 'name': 'Ms. Meera Singh', 'subject': 'Science', 'school': 'School A'},
+    {'id': 'T003', 'name': 'Mr. Suresh Patel', 'subject': 'English', 'school': 'School A'},
+    {'id': 'T004', 'name': 'Mrs. Anita Sharma', 'subject': 'History', 'school': 'School A'},
+    {'id': 'T005', 'name': 'Mr. Vikram Reddy', 'subject': 'Computer Science', 'school': 'School A'},
+    {'id': 'T006', 'name': 'Dr. Priya Gupta', 'subject': 'Biology', 'school': 'School B'},
+    {'id': 'T007', 'name': 'Mr. Arjun Nair', 'subject': 'Physics', 'school': 'School B'},
+    {'id': 'T008', 'name': 'Ms. Kavya Reddy', 'subject': 'Chemistry', 'school': 'School B'},
+    {'id': 'T009', 'name': 'Mr. Amit Singh', 'subject': 'Geography', 'school': 'School B'},
+    {'id': 'T010', 'name': 'Ms. Neha Sharma', 'subject': 'Art', 'school': 'School B'},
   ];
 
   @override
@@ -194,12 +207,14 @@ class _SubjectScreenState extends State<SubjectScreen> {
   // ============ SAMPLE DATA ============
   void _loadSampleData() {
     _subjects = [
+      // School A Subjects
       SubjectModel(
         id: 'SUB001',
         name: 'Mathematics',
         code: 'MATH',
         teachers: ['Dr. Rajesh Kumar', 'Mr. Arjun Nair'],
         teacherIds: ['T001', 'T007'],
+        school: 'School A',
         classAssignments: [
           ClassAssignment(
             classLevel: '10th',
@@ -230,6 +245,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
         code: 'SCI',
         teachers: ['Ms. Meera Singh', 'Dr. Priya Gupta'],
         teacherIds: ['T002', 'T006'],
+        school: 'School A',
         classAssignments: [
           ClassAssignment(
             classLevel: '10th',
@@ -253,6 +269,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
         code: 'ENG',
         teachers: ['Mr. Suresh Patel'],
         teacherIds: ['T003'],
+        school: 'School A',
         classAssignments: [
           ClassAssignment(
             classLevel: '8th',
@@ -269,14 +286,16 @@ class _SubjectScreenState extends State<SubjectScreen> {
         code: 'HIS',
         teachers: ['Mrs. Anita Sharma'],
         teacherIds: ['T004'],
+        school: 'School A',
         classAssignments: [],
       ),
       SubjectModel(
         id: 'SUB005',
         name: 'Computer Science',
         code: 'CS',
-        teachers: ['Mr. Vikram Reddy', 'Ms. Kavya Reddy'],
-        teacherIds: ['T005', 'T008'],
+        teachers: ['Mr. Vikram Reddy'],
+        teacherIds: ['T005'],
+        school: 'School A',
         classAssignments: [
           ClassAssignment(
             classLevel: '10th',
@@ -285,30 +304,16 @@ class _SubjectScreenState extends State<SubjectScreen> {
             room: 'Computer Lab',
             teacher: 'Mr. Vikram Reddy',
           ),
-          ClassAssignment(
-            classLevel: '9th',
-            section: 'A',
-            timeSlot: '12:00 PM - 12:45 PM',
-            room: 'Computer Lab',
-            teacher: 'Ms. Kavya Reddy',
-          ),
         ],
       ),
+      // School B Subjects
       SubjectModel(
         id: 'SUB006',
-        name: 'Geography',
-        code: 'GEO',
-        teachers: [],
-        teacherIds: [],
-        status: SubjectStatus.inactive,
-        classAssignments: [],
-      ),
-      SubjectModel(
-        id: 'SUB007',
         name: 'Physics',
         code: 'PHY',
         teachers: ['Mr. Arjun Nair', 'Dr. Priya Gupta'],
         teacherIds: ['T007', 'T006'],
+        school: 'School B',
         status: SubjectStatus.upcoming,
         classAssignments: [
           ClassAssignment(
@@ -321,20 +326,49 @@ class _SubjectScreenState extends State<SubjectScreen> {
         ],
       ),
       SubjectModel(
-        id: 'SUB008',
+        id: 'SUB007',
         name: 'Chemistry',
         code: 'CHE',
-        teachers: ['Ms. Kavya Reddy', 'Ms. Meera Singh'],
-        teacherIds: ['T008', 'T002'],
+        teachers: ['Ms. Kavya Reddy'],
+        teacherIds: ['T008'],
+        school: 'School B',
         status: SubjectStatus.upcoming,
         classAssignments: [],
       ),
       SubjectModel(
+        id: 'SUB008',
+        name: 'Biology',
+        code: 'BIO',
+        teachers: ['Dr. Priya Gupta'],
+        teacherIds: ['T006'],
+        school: 'School B',
+        classAssignments: [
+          ClassAssignment(
+            classLevel: '10th',
+            section: 'B',
+            timeSlot: '12:00 PM - 12:45 PM',
+            room: 'Bio Lab',
+            teacher: 'Dr. Priya Gupta',
+          ),
+        ],
+      ),
+      SubjectModel(
         id: 'SUB009',
+        name: 'Geography',
+        code: 'GEO',
+        teachers: ['Mr. Amit Singh'],
+        teacherIds: ['T009'],
+        school: 'School B',
+        status: SubjectStatus.inactive,
+        classAssignments: [],
+      ),
+      SubjectModel(
+        id: 'SUB010',
         name: 'Art',
         code: 'ART',
-        teachers: [],
-        teacherIds: [],
+        teachers: ['Ms. Neha Sharma'],
+        teacherIds: ['T010'],
+        school: 'School B',
         classAssignments: [],
       ),
     ];
@@ -344,6 +378,14 @@ class _SubjectScreenState extends State<SubjectScreen> {
   List<SubjectModel> get _filteredSubjects {
     var filtered = _subjects;
 
+    // School Filter
+    if (_currentSchoolFilter == SchoolFilter.schoolA) {
+      filtered = filtered.where((subject) => subject.school == 'School A').toList();
+    } else if (_currentSchoolFilter == SchoolFilter.schoolB) {
+      filtered = filtered.where((subject) => subject.school == 'School B').toList();
+    }
+
+    // Subject Filter
     if (_currentFilter != SubjectFilter.all) {
       filtered = filtered.where((subject) {
         switch (_currentFilter) {
@@ -360,11 +402,13 @@ class _SubjectScreenState extends State<SubjectScreen> {
       }).toList();
     }
 
+    // Search Filter
     if (_searchQuery.isNotEmpty) {
       filtered = filtered.where((subject) =>
       subject.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           subject.code.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          subject.teachers.any((t) => t.toLowerCase().contains(_searchQuery.toLowerCase()))
+          subject.teachers.any((t) => t.toLowerCase().contains(_searchQuery.toLowerCase())) ||
+          subject.school.toLowerCase().contains(_searchQuery.toLowerCase())
       ).toList();
     }
 
@@ -376,12 +420,21 @@ class _SubjectScreenState extends State<SubjectScreen> {
   int get _subjectsWithTeachers => _subjects.where((s) => s.teachers.isNotEmpty).length;
   int get _subjectsWithSchedule => _subjects.where((s) => s.classAssignments.isNotEmpty).length;
 
+  Map<String, int> get _schoolWiseStats {
+    Map<String, int> stats = {};
+    for (var subject in _subjects) {
+      stats[subject.school] = (stats[subject.school] ?? 0) + 1;
+    }
+    return stats;
+  }
+
   // ============ FORM METHODS ============
   void _resetForm() {
     _subjectNameController.clear();
     _subjectCodeController.clear();
     _selectedTeachers = [];
     _selectedStatus = SubjectStatus.active;
+    _selectedSchoolForm = 'School A';
     _formAssignments = [];
     _imageFile = null;
   }
@@ -391,6 +444,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
     _subjectCodeController.text = subject.code;
     _selectedTeachers = List.from(subject.teachers);
     _selectedStatus = subject.status;
+    _selectedSchoolForm = subject.school;
     _formAssignments = List.from(subject.classAssignments);
     _imageFile = subject.photo != null ? File(subject.photo!) : null;
   }
@@ -411,6 +465,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
       teacherIds: teacherIds,
       status: _selectedStatus,
       photo: _imageFile?.path,
+      school: _selectedSchoolForm,
       classAssignments: _formAssignments.map((a) => ClassAssignment(
         classLevel: a.classLevel,
         section: a.section,
@@ -584,19 +639,43 @@ class _SubjectScreenState extends State<SubjectScreen> {
                 itemBuilder: (context, index) {
                   final teacher = _availableTeachers[index];
                   final isSelected = tempSelected.contains(teacher['name']);
+                  final isSchoolMatch = _selectedSchoolForm == teacher['school'];
+
                   return CheckboxListTile(
                     title: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(teacher['name'].toString()),
+                        Row(
+                          children: [
+                            Text(teacher['name'].toString()),
+                            if (!isSchoolMatch)
+                              Container(
+                                margin: const EdgeInsets.only(left: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange[100],
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'Different School',
+                                  style: TextStyle(
+                                    fontSize: 8,
+                                    color: Colors.orange[700],
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                         Text(
-                          teacher['subject'] ?? '',
+                          '${teacher['subject'] ?? ''} • ${teacher['school']}',
                           style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                         ),
                       ],
                     ),
                     value: isSelected,
-                    onChanged: (bool? value) {
+                    onChanged: isSchoolMatch
+                        ? (bool? value) {
                       setStateDialog(() {
                         if (value == true) {
                           tempSelected.add(teacher['name'].toString());
@@ -604,9 +683,13 @@ class _SubjectScreenState extends State<SubjectScreen> {
                           tempSelected.remove(teacher['name']);
                         }
                       });
-                    },
+                    }
+                        : null,
                     activeColor: Colors.blue,
                     dense: true,
+                    secondary: !isSchoolMatch
+                        ? Icon(Icons.warning, color: Colors.orange, size: 16)
+                        : null,
                   );
                 },
               ),
@@ -663,6 +746,14 @@ class _SubjectScreenState extends State<SubjectScreen> {
     );
   }
 
+  Color _getSchoolColor(String school) {
+    switch (school) {
+      case 'School A': return Colors.blue;
+      case 'School B': return Colors.green;
+      default: return Colors.grey;
+    }
+  }
+
   String _getInitials(String name) {
     final parts = name.split(' ');
     if (parts.length >= 2) return parts[0][0] + parts[1][0];
@@ -686,6 +777,13 @@ class _SubjectScreenState extends State<SubjectScreen> {
   // ============ BUILD ============
   @override
   Widget build(BuildContext context) {
+    final schoolStats = _schoolWiseStats;
+    final schoolLabel = _currentSchoolFilter == SchoolFilter.all
+        ? 'All Schools'
+        : _currentSchoolFilter == SchoolFilter.schoolA
+        ? 'School A'
+        : 'School B';
+
     return Scaffold(
       body: Container(
         margin: const EdgeInsets.all(16),
@@ -707,7 +805,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
               flex: _showRightPanel ? 5 : 8,
               child: Column(
                 children: [
-                  _buildHeader(),
+                  _buildHeader(schoolLabel, schoolStats),
                   _buildFilterSearchBar(),
                   Expanded(
                     child: _filteredSubjects.isEmpty
@@ -808,13 +906,6 @@ class _SubjectScreenState extends State<SubjectScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 _buildEmptyStatCard(
-                  icon: Icons.check_circle,
-                  label: 'Active',
-                  count: _activeSubjects,
-                  color: Colors.green,
-                ),
-                const SizedBox(width: 12),
-                _buildEmptyStatCard(
                   icon: Icons.person,
                   label: 'With Teacher',
                   count: _subjectsWithTeachers,
@@ -900,7 +991,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
   }
 
   // ============ HEADER ============
-  Widget _buildHeader() {
+  Widget _buildHeader(String schoolLabel, Map<String, int> schoolStats) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -937,7 +1028,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Subjects Management',
                     style: TextStyle(
                       fontSize: 18,
@@ -958,27 +1049,64 @@ class _SubjectScreenState extends State<SubjectScreen> {
           ),
           Row(
             children: [
+
+              // School Filter Dropdown - SINGLE FILTER
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                height: 36,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
-                  color: Colors.green[50],
-                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[200]!),
                 ),
-                child: Row(
-                  children: [
-                    Icon(Icons.circle, size: 6, color: Colors.green[600]),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$_activeSubjects Active',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.green[700],
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<SchoolFilter>(
+                    value: _currentSchoolFilter,
+                    style: const TextStyle(fontSize: 12, color: Colors.black87),
+                    icon: Icon(Icons.school, color: Colors.grey[600], size: 18),
+                    items: [
+                      const DropdownMenuItem(
+                        value: SchoolFilter.all,
+                        child: Row(
+                          children: [
+                            Icon(Icons.school, size: 16, color: Colors.grey),
+                            SizedBox(width: 6),
+                            Text('All Schools'),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                      const DropdownMenuItem(
+                        value: SchoolFilter.schoolA,
+                        child: Row(
+                          children: [
+                            Icon(Icons.school, size: 16, color: Colors.blue),
+                            SizedBox(width: 6),
+                            Text('School A'),
+                          ],
+                        ),
+                      ),
+                      const DropdownMenuItem(
+                        value: SchoolFilter.schoolB,
+                        child: Row(
+                          children: [
+                            Icon(Icons.school, size: 16, color: Colors.green),
+                            SizedBox(width: 6),
+                            Text('School B'),
+                          ],
+                        ),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _currentSchoolFilter = value!;
+                        _selectedSubject = null;
+                        _showRightPanel = false;
+                      });
+                    },
+                  ),
                 ),
               ),
+
               const SizedBox(width: 8),
               if (!_showRightPanel || !_isAddingNew)
                 ElevatedButton.icon(
@@ -1085,6 +1213,12 @@ class _SubjectScreenState extends State<SubjectScreen> {
 
   Widget _buildFilterChip(String label, SubjectFilter filter) {
     final isSelected = _currentFilter == filter;
+    Color color = Colors.blue;
+    if (filter == SubjectFilter.active) color = Colors.green;
+    if (filter == SubjectFilter.inactive) color = Colors.red;
+    if (filter == SubjectFilter.upcoming) color = Colors.orange;
+    if (filter == SubjectFilter.completed) color = Colors.blue;
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -1094,10 +1228,10 @@ class _SubjectScreenState extends State<SubjectScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.blue[700] : Colors.grey[50],
+          color: isSelected ? color : Colors.grey[50],
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? Colors.blue[700]! : Colors.grey[200]!,
+            color: isSelected ? color : Colors.grey[200]!,
             width: 1,
           ),
         ),
@@ -1116,6 +1250,8 @@ class _SubjectScreenState extends State<SubjectScreen> {
   // ============ SUBJECT CARD ============
   Widget _buildSubjectCard(SubjectModel subject) {
     final isSelected = _selectedSubject?.id == subject.id;
+    final schoolColor = _getSchoolColor(subject.school);
+    final hasTeacher = subject.teachers.isNotEmpty;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -1135,12 +1271,12 @@ class _SubjectScreenState extends State<SubjectScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: subject.teachers.isNotEmpty ? Colors.green[50] : Colors.red[50],
+              color: hasTeacher ? Colors.green[50] : Colors.red[50],
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
-              subject.teachers.isNotEmpty ? Icons.check_circle : Icons.warning,
-              color: subject.teachers.isNotEmpty ? Colors.green : Colors.red,
+              hasTeacher ? Icons.check_circle : Icons.warning,
+              color: hasTeacher ? Colors.green : Colors.red,
               size: 20,
             ),
           ),
@@ -1213,6 +1349,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
                     spacing: 8,
                     runSpacing: 2,
                     children: [
+                      _buildInfoText(Icons.school, subject.school, color: schoolColor),
                       _buildInfoText(Icons.person, '${subject.teachers.length} Teacher(s)'),
                       _buildInfoText(Icons.schedule, '${subject.classAssignments.length} Schedule(s)'),
                     ],
@@ -1301,17 +1438,17 @@ class _SubjectScreenState extends State<SubjectScreen> {
     );
   }
 
-  Widget _buildInfoText(IconData icon, String text) {
+  Widget _buildInfoText(IconData icon, String text, {Color? color}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 11, color: Colors.grey[500]),
+        Icon(icon, size: 11, color: color ?? Colors.grey[500]),
         const SizedBox(width: 4),
         Text(
           text,
           style: TextStyle(
             fontSize: 10,
-            color: Colors.grey[600],
+            color: color ?? Colors.grey[600],
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -1382,6 +1519,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
     if (_selectedSubject == null) return const SizedBox();
 
     final subject = _selectedSubject!;
+    final schoolColor = _getSchoolColor(subject.school);
     final hasTeacher = subject.teachers.isNotEmpty;
     final hasSchedule = subject.classAssignments.isNotEmpty;
 
@@ -1397,12 +1535,12 @@ class _SubjectScreenState extends State<SubjectScreen> {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: Colors.blue[50],
+                  color: schoolColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   Icons.book,
-                  color: Colors.blue[700],
+                  color: schoolColor,
                   size: 28,
                 ),
               ),
@@ -1422,6 +1560,29 @@ class _SubjectScreenState extends State<SubjectScreen> {
                     const SizedBox(height: 4),
                     Row(
                       children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: schoolColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: schoolColor.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.school, size: 12, color: schoolColor),
+                              const SizedBox(width: 4),
+                              Text(
+                                subject.school,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: schoolColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
@@ -1466,10 +1627,11 @@ class _SubjectScreenState extends State<SubjectScreen> {
           const SizedBox(height: 16),
 
           // Info
+          _buildDetailRow('🏫 School', subject.school, color: schoolColor, isBold: true),
           _buildDetailRow('📚 Subject', subject.name),
           _buildDetailRow('🏷️ Code', subject.code),
           _buildDetailRow('👨‍🏫 Teachers', subject.teachers.isEmpty ? 'No teachers assigned' : subject.teachers.join(', ')),
-          _buildDetailRow('📋 Status', subject.statusDisplay),
+          _buildDetailRow('📋 Status', subject.statusDisplay, color: subject.statusColor),
 
           if (hasSchedule) ...[
             const SizedBox(height: 12),
@@ -1623,7 +1785,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow(String label, String value, {Color? color, bool isBold = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
@@ -1643,9 +1805,10 @@ class _SubjectScreenState extends State<SubjectScreen> {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
-                color: Colors.black87,
+                color: color ?? Colors.black87,
+                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
               ),
             ),
           ),
@@ -1993,11 +2156,24 @@ class _SubjectScreenState extends State<SubjectScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        _buildFormTextField(_subjectNameController, 'Subject Name', Icons.book,
-            hint: 'e.g., Mathematics', required: true),
+        Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: _buildFormTextField(_subjectNameController, 'Subject Name', Icons.book,
+                  hint: 'e.g., Mathematics', required: true),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildFormTextField(_subjectCodeController, 'Code', Icons.code,
+                  hint: 'e.g., MATH', required: true),
+            ),
+          ],
+        ),
         const SizedBox(height: 8),
-        _buildFormTextField(_subjectCodeController, 'Subject Code', Icons.code,
-            hint: 'e.g., MATH', required: true),
+        _buildDropdownField('School', _schoolList, _selectedSchoolForm, (value) {
+          setState(() => _selectedSchoolForm = value!);
+        }),
         const SizedBox(height: 12),
 
         // Teachers
@@ -2309,27 +2485,23 @@ class _SubjectScreenState extends State<SubjectScreen> {
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
-
           prefixIcon: Icon(
             icon,
             size: 16,
             color: Colors.grey[600],
           ),
-
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide(
               color: Colors.grey[300]!,
             ),
           ),
-
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide(
               color: Colors.grey[300]!,
             ),
           ),
-
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: const BorderSide(
@@ -2337,27 +2509,22 @@ class _SubjectScreenState extends State<SubjectScreen> {
               width: 1,
             ),
           ),
-
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 12,
             vertical: 8,
           ),
-
           isDense: true,
           filled: true,
           fillColor: Colors.grey[50],
-
           labelStyle: TextStyle(
             fontSize: 12,
             color: Colors.grey[600],
           ),
-
           floatingLabelStyle: const TextStyle(
             color: Colors.blue,
             fontWeight: FontWeight.w500,
           ),
         ),
-
         validator: required
             ? (v) => v?.trim().isEmpty ?? true
             ? '$label is required'
