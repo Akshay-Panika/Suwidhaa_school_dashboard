@@ -271,26 +271,30 @@ class _MainScreenState extends State<MainScreen> {
     bool isActive = false,
     Color? color,
   }) {
-    return ListTile(
-      leading: Icon(
-        icon,
-        color: isActive ? Colors.blue[700] : (color ?? Colors.grey[600]),
-        size: 22,
-      ),
-      title: Text(
-        title,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-          color: isActive ? Colors.blue[700] : (color ?? Colors.grey[700]),
+    return Material(
+      color: isActive ? Colors.blue[50] : Colors.transparent,
+      borderRadius: BorderRadius.circular(8),
+      child: ListTile(
+        leading: Icon(
+          icon,
+          color: isActive ? Colors.blue[700] : (color ?? Colors.grey[600]),
+          size: 22,
         ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+            color: isActive ? Colors.blue[700] : (color ?? Colors.grey[700]),
+          ),
+        ),
+        onTap: onTap,
+        tileColor: isActive ? Colors.blue[50] : Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       ),
-      onTap: onTap,
-      tileColor: isActive ? Colors.blue[50] : Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
-      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 2),
     );
   }
 

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart'; // Add this dependency
+
+// Add to pubspec.yaml:
+// file_picker: ^6.1.1
 
 // ============ ENUMS ============
 enum ScheduleType {
@@ -36,6 +40,7 @@ class ScheduleModel {
   final IconData icon;
   final String? attachment;
   final String? bannerImage;
+  final String? pdfFile; // New field for PDF
   final List<String>? assignedClasses;
   final List<String>? assignedTeachers;
   final String? eventType;
@@ -65,6 +70,7 @@ class ScheduleModel {
     required this.icon,
     this.attachment,
     this.bannerImage,
+    this.pdfFile, // New field
     this.assignedClasses,
     this.assignedTeachers,
     this.eventType,
@@ -145,6 +151,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   List<String> _selectedTeachers = [];
   File? _bannerImage;
   String? _bannerImagePath;
+  File? _pdfFile; // New field for PDF
+  String? _pdfFilePath; // New field for PDF path
 
   final List<String> _classList = ['Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5'];
   final List<String> _teacherList = ['Mr. John', 'Ms. Sarah', 'Dr. Smith', 'Mrs. Brown'];
@@ -211,6 +219,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         assignedClasses: ['Class 1', 'Class 2', 'Class 3'],
         assignedTeachers: ['Mr. John', 'Ms. Sarah'],
         bannerImage: null,
+        pdfFile: null,
       ),
       ScheduleModel(
         id: '2',
@@ -231,6 +240,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         assignedClasses: ['Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5'],
         assignedTeachers: ['Dr. Smith', 'Mrs. Brown'],
         bannerImage: null,
+        pdfFile: null,
       ),
       ScheduleModel(
         id: '3',
@@ -251,6 +261,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         assignedClasses: ['All Classes'],
         assignedTeachers: ['All Teachers'],
         bannerImage: null,
+        pdfFile: null,
       ),
       ScheduleModel(
         id: '4',
@@ -271,6 +282,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         assignedClasses: ['Class 3', 'Class 4', 'Class 5'],
         assignedTeachers: ['Mr. John', 'Dr. Smith'],
         bannerImage: null,
+        pdfFile: null,
       ),
       // School B Schedules
       ScheduleModel(
@@ -292,6 +304,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         assignedClasses: ['All Classes'],
         assignedTeachers: ['All Teachers'],
         bannerImage: null,
+        pdfFile: null,
       ),
       ScheduleModel(
         id: '6',
@@ -311,6 +324,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         otherNotes: 'All teachers must attend. Certificate will be provided.',
         assignedTeachers: ['All Teachers'],
         bannerImage: null,
+        pdfFile: null,
       ),
       ScheduleModel(
         id: '7',
@@ -331,6 +345,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         assignedClasses: ['All Classes'],
         assignedTeachers: ['Ms. Sarah', 'Mrs. Brown'],
         bannerImage: null,
+        pdfFile: null,
       ),
     ];
   }
@@ -410,6 +425,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     _selectedTeachers = [];
     _bannerImage = null;
     _bannerImagePath = null;
+    _pdfFile = null; // Reset PDF
+    _pdfFilePath = null; // Reset PDF path
   }
 
   void _loadScheduleToForm(ScheduleModel schedule) {
@@ -426,6 +443,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     _selectedClasses = schedule.assignedClasses ?? [];
     _selectedTeachers = schedule.assignedTeachers ?? [];
     _bannerImagePath = schedule.bannerImage;
+    _pdfFilePath = schedule.pdfFile; // Load PDF path
 
     if (schedule.type == ScheduleType.event) {
       _eventTypeController.text = schedule.eventType ?? '';
@@ -459,6 +477,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       icon: _selectedIcon,
       school: _selectedSchoolForm,
       bannerImage: _bannerImagePath,
+      pdfFile: _pdfFilePath, // Save PDF path
       assignedClasses: _selectedType != ScheduleType.event ? _selectedClasses : null,
       assignedTeachers: _selectedTeachers.isNotEmpty ? _selectedTeachers : null,
       eventType: _selectedType == ScheduleType.event ? _eventTypeController.text : null,
@@ -497,6 +516,53 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     setState(() {
       _bannerImage = null;
       _bannerImagePath = null;
+    });
+  }
+
+  // ============ PDF PICKER ============
+  Future<void> _pickPDF() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+      );
+
+      if (result != null) {
+        PlatformFile file = result.files.first;
+        setState(() {
+          _pdfFile = File(file.path!);
+          _pdfFilePath = file.path;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('PDF selected: ${file.name}'),
+            backgroundColor: Colors.green[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error selecting PDF: $e'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      );
+    }
+  }
+
+  void _removePDF() {
+    setState(() {
+      _pdfFile = null;
+      _pdfFilePath = null;
     });
   }
 
@@ -1056,6 +1122,16 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       _buildInfoText(Icons.location_on, schedule.location),
                     ],
                   ),
+                  // Show PDF indicator if attached
+                  if (schedule.pdfFile != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: _buildInfoText(
+                        Icons.picture_as_pdf,
+                        'PDF Attached',
+                        color: Colors.red,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -1304,6 +1380,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           _buildDetailRow('📍 Location', schedule.location),
           _buildDetailRow('📝 Description', schedule.description),
 
+          // PDF Attachment
+          if (schedule.pdfFile != null)
+            _buildPDFAttachment(schedule.pdfFile!),
+
           const SizedBox(height: 12),
           const Divider(),
           const SizedBox(height: 12),
@@ -1390,6 +1470,74 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  // ============ PDF ATTACHMENT WIDGET ============
+  Widget _buildPDFAttachment(String pdfPath) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.red[50],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.red[200]!),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red[100],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.picture_as_pdf,
+                color: Colors.red,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'PDF Attachment',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  Text(
+                    pdfPath.split('/').last,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey[600],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              onPressed: () {
+                // You can implement PDF viewer here
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('PDF viewer will open here'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              icon: Icon(Icons.visibility, color: Colors.red[700], size: 20),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1983,6 +2131,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
         const SizedBox(height: 10),
 
+        // PDF Upload Section
+        _buildPDFUploadSection(),
+
+        const SizedBox(height: 10),
+
         // Assign Classes - Only for Exam and Other types
         if (_selectedType != ScheduleType.event) ...[
           const Text(
@@ -2181,6 +2334,153 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         const SizedBox(height: 8),
         Text(
           'Recommended: 800 x 400 pixels, JPG/PNG format',
+          style: TextStyle(
+            fontSize: 10,
+            color: Colors.grey[500],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ============ PDF UPLOAD SECTION ============
+  Widget _buildPDFUploadSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.red[50],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.red[200]!),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.picture_as_pdf, color: Colors.red[700], size: 16),
+              const SizedBox(width: 8),
+              Text(
+                'PDF Attachment',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.red[700],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[50],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey[300]!),
+          ),
+          child: Column(
+            children: [
+              // PDF Info
+              if (_pdfFile != null || _pdfFilePath != null)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red[50],
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(8),
+                      topRight: Radius.circular(8),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.picture_as_pdf, color: Colors.red[700], size: 24),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'PDF Selected',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            Text(
+                              _pdfFile != null
+                                  ? _pdfFile!.path.split('/').last
+                                  : _pdfFilePath!.split('/').last,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[600],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: _removePDF,
+                        icon: Icon(Icons.close, color: Colors.red[700], size: 20),
+                      ),
+                    ],
+                  ),
+                ),
+              // Upload Button
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _pickPDF,
+                        icon: Icon(
+                          _pdfFile != null || _pdfFilePath != null
+                              ? Icons.change_circle
+                              : Icons.upload_file,
+                          size: 18,
+                        ),
+                        label: Text(
+                          _pdfFile != null || _pdfFilePath != null
+                              ? 'Change PDF'
+                              : 'Upload PDF',
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red[700],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
+                    if (_pdfFile != null || _pdfFilePath != null)
+                      const SizedBox(width: 8),
+                    if (_pdfFile != null || _pdfFilePath != null)
+                      OutlinedButton(
+                        onPressed: _removePDF,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          side: BorderSide(color: Colors.red[300]!),
+                        ),
+                        child: const Text('Remove'),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Upload PDF files only (max size: 10MB)',
           style: TextStyle(
             fontSize: 10,
             color: Colors.grey[500],

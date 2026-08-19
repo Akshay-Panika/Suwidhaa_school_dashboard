@@ -19,593 +19,285 @@ class _SettingScreenState extends State<SettingScreen> {
   // General Settings
   String selectedTheme = 'Light';
   String selectedLanguage = 'English';
-  String selectedCurrency = '₹ INR';
-  String selectedTimeZone = 'IST (UTC+5:30)';
 
   // School Settings
-  String academicYear = '2024-2025';
   String schoolName = 'Sunrise School';
   String schoolEmail = 'info@sunriseschool.com';
   String schoolPhone = '+91 98765 43210';
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.grey[50],
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Left Sidebar - Admin Navigation
-          Container(
-            width: 220,
-            color: Colors.white,
-            child: Column(
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            _buildHeader(),
+            const SizedBox(height: 20),
+
+            // Row 1: General + Notifications
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Admin Header
-                Container(
-                  padding: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(color: Colors.grey[200]!),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundImage: NetworkImage(
-                          'https://picsum.photos/seed/admin/200/200',
-                        ),
-                      ),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Admin User",
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              "Super Admin",
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Navigation Items
                 Expanded(
-                  child: ListView(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    children: [
-                      _buildNavItem(
-                        icon: Icons.dashboard,
-                        title: "Dashboard",
-                        isActive: false,
-                        onTap: () {},
-                      ),
-                      _buildNavItem(
-                        icon: Icons.settings,
-                        title: "Settings",
-                        isActive: true,
-                        onTap: () {},
-                      ),
-                      _buildNavItem(
-                        icon: Icons.person,
-                        title: "Profile",
-                        isActive: false,
-                        onTap: () {},
-                      ),
-                      _buildNavItem(
-                        icon: Icons.security,
-                        title: "Security",
-                        isActive: false,
-                        onTap: () {},
-                      ),
-                      _buildNavItem(
-                        icon: Icons.notifications,
-                        title: "Notifications",
-                        isActive: false,
-                        onTap: () {},
-                      ),
-                      _buildNavItem(
-                        icon: Icons.backup,
-                        title: "Backup",
-                        isActive: false,
-                        onTap: () {},
-                      ),
-                      _buildNavItem(
-                        icon: Icons.analytics,
-                        title: "Analytics",
-                        isActive: false,
-                        onTap: () {},
-                      ),
-                      _buildNavItem(
-                        icon: Icons.help,
-                        title: "Help & Support",
-                        isActive: false,
-                        onTap: () {},
-                      ),
-
-                      SizedBox(height: 20),
-                      Divider(height: 1),
-                      SizedBox(height: 10),
-
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Right Content - Settings
-          Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Page Header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Settings",
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            "Manage your school settings and preferences",
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          OutlinedButton.icon(
-                            onPressed: () {},
-                            icon: Icon(Icons.save, size: 18),
-                            label: Text("Save Changes"),
-                            style: OutlinedButton.styleFrom(
-                              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            ),
-                          ),
-                          SizedBox(width: 10),
-                          ElevatedButton.icon(
-                            onPressed: () {},
-                            icon: Icon(Icons.refresh, size: 18),
-                            label: Text("Reset All"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-
-                  SizedBox(height: 24),
-
-                  // General Settings Card
-                  _buildSettingsCard(
-                    title: "General Settings",
+                  child: _buildSettingsCard(
+                    title: "General",
                     icon: Icons.settings,
                     children: [
                       _buildSettingRow(
                         label: "School Name",
                         value: schoolName,
                         icon: Icons.school,
-                        onTap: () {
-                          _showEditDialog(context, "School Name", schoolName, (value) {
-                            setState(() {
-                              schoolName = value;
-                            });
-                          });
-                        },
+                        onTap: () => _showEditDialog(context, "School Name", schoolName, (value) {
+                          setState(() => schoolName = value);
+                        }),
                       ),
                       _buildSettingRow(
                         label: "School Email",
                         value: schoolEmail,
                         icon: Icons.email,
-                        onTap: () {
-                          _showEditDialog(context, "School Email", schoolEmail, (value) {
-                            setState(() {
-                              schoolEmail = value;
-                            });
-                          });
-                        },
+                        onTap: () => _showEditDialog(context, "School Email", schoolEmail, (value) {
+                          setState(() => schoolEmail = value);
+                        }),
                       ),
                       _buildSettingRow(
                         label: "School Phone",
                         value: schoolPhone,
                         icon: Icons.phone,
-                        onTap: () {
-                          _showEditDialog(context, "School Phone", schoolPhone, (value) {
-                            setState(() {
-                              schoolPhone = value;
-                            });
-                          });
-                        },
+                        onTap: () => _showEditDialog(context, "School Phone", schoolPhone, (value) {
+                          setState(() => schoolPhone = value);
+                        }),
                       ),
                       _buildDropdownRow(
                         label: "Language",
                         value: selectedLanguage,
                         icon: Icons.language,
                         items: ['English', 'Hindi', 'Spanish', 'French'],
-                        onChanged: (value) {
-                          setState(() {
-                            selectedLanguage = value;
-                          });
-                        },
+                        onChanged: (value) => setState(() => selectedLanguage = value),
                       ),
                       _buildDropdownRow(
                         label: "Theme",
                         value: selectedTheme,
                         icon: Icons.color_lens,
                         items: ['Light', 'Dark', 'System'],
-                        onChanged: (value) {
-                          setState(() {
-                            selectedTheme = value;
-                          });
-                        },
-                      ),
-                      _buildDropdownRow(
-                        label: "Currency",
-                        value: selectedCurrency,
-                        icon: Icons.attach_money,
-                        items: ['₹ INR', ' USD', '€ EUR', '£ GBP'],
-                        onChanged: (value) {
-                          setState(() {
-                            selectedCurrency = value;
-                          });
-                        },
-                      ),
-                      _buildDropdownRow(
-                        label: "Time Zone",
-                        value: selectedTimeZone,
-                        icon: Icons.access_time,
-                        items: ['IST (UTC+5:30)', 'EST (UTC-5:00)', 'GMT (UTC+0:00)', 'PST (UTC-8:00)'],
-                        onChanged: (value) {
-                          setState(() {
-                            selectedTimeZone = value;
-                          });
-                        },
+                        onChanged: (value) => setState(() => selectedTheme = value),
                       ),
                     ],
                   ),
-
-                  SizedBox(height: 20),
-
-                  // Academic Settings Card
-                  _buildSettingsCard(
-                    title: "Academic Settings",
-                    icon: Icons.school,
-                    children: [
-                      _buildSettingRow(
-                        label: "Academic Year",
-                        value: academicYear,
-                        icon: Icons.calendar_today,
-                        onTap: () {
-                          _showEditDialog(context, "Academic Year", academicYear, (value) {
-                            setState(() {
-                              academicYear = value;
-                            });
-                          });
-                        },
-                      ),
-                      _buildSettingRow(
-                        label: "Term Start Date",
-                        value: "Jan 15, 2024",
-                        icon: Icons.play_arrow,
-                        onTap: () {},
-                      ),
-                      _buildSettingRow(
-                        label: "Term End Date",
-                        value: "Dec 20, 2024",
-                        icon: Icons.stop,
-                        onTap: () {},
-                      ),
-                      _buildSwitchRow(
-                        label: "Enable Online Admissions",
-                        value: true,
-                        icon: Icons.how_to_reg,
-                        onChanged: (value) {},
-                      ),
-                      _buildSwitchRow(
-                        label: "Enable Exam Module",
-                        value: true,
-                        icon: Icons.assignment,
-                        onChanged: (value) {},
-                      ),
-                    ],
-                  ),
-
-                  SizedBox(height: 20),
-
-                  // Notification Settings Card
-                  _buildSettingsCard(
-                    title: "Notification Settings",
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildSettingsCard(
+                    title: "Notifications",
                     icon: Icons.notifications,
                     children: [
                       _buildSwitchRow(
                         label: "Push Notifications",
-                        subtitle: "Receive push notifications on mobile",
                         value: pushNotifications,
                         icon: Icons.notifications_active,
-                        onChanged: (value) {
-                          setState(() {
-                            pushNotifications = value;
-                          });
-                        },
+                        onChanged: (value) => setState(() => pushNotifications = value),
                       ),
                       _buildSwitchRow(
                         label: "Email Notifications",
-                        subtitle: "Receive notifications via email",
                         value: emailNotifications,
                         icon: Icons.email,
-                        onChanged: (value) {
-                          setState(() {
-                            emailNotifications = value;
-                          });
-                        },
+                        onChanged: (value) => setState(() => emailNotifications = value),
                       ),
                       _buildSwitchRow(
                         label: "SMS Notifications",
-                        subtitle: "Receive SMS alerts",
                         value: smsNotifications,
                         icon: Icons.sms,
-                        onChanged: (value) {
-                          setState(() {
-                            smsNotifications = value;
-                          });
-                        },
+                        onChanged: (value) => setState(() => smsNotifications = value),
                       ),
                       _buildSwitchRow(
                         label: "Attendance Alerts",
-                        subtitle: "Get alerts for student attendance",
                         value: attendanceAlerts,
                         icon: Icons.check_circle,
-                        onChanged: (value) {
-                          setState(() {
-                            attendanceAlerts = value;
-                          });
-                        },
+                        onChanged: (value) => setState(() => attendanceAlerts = value),
                       ),
                       _buildSwitchRow(
                         label: "Exam Alerts",
-                        subtitle: "Get notifications about exams",
                         value: examAlerts,
                         icon: Icons.grading,
-                        onChanged: (value) {
-                          setState(() {
-                            examAlerts = value;
-                          });
-                        },
+                        onChanged: (value) => setState(() => examAlerts = value),
                       ),
                       _buildSwitchRow(
                         label: "Fee Reminders",
-                        subtitle: "Get reminders for fee payments",
                         value: feeAlerts,
                         icon: Icons.attach_money,
-                        onChanged: (value) {
-                          setState(() {
-                            feeAlerts = value;
-                          });
-                        },
+                        onChanged: (value) => setState(() => feeAlerts = value),
                       ),
                     ],
                   ),
+                ),
+              ],
+            ),
 
-                  SizedBox(height: 20),
+            const SizedBox(height: 16),
 
-                  // Security Settings Card
-                  _buildSettingsCard(
-                    title: "Security Settings",
+            // Row 2: Security + Data Management
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _buildSettingsCard(
+                    title: "Security",
                     icon: Icons.security,
                     children: [
-                      _buildSettingRow(
-                        label: "Two-Factor Authentication",
-                        value: "Enabled",
+                      _buildSwitchRow(
+                        label: "Two-Factor Auth",
+                        value: true,
                         icon: Icons.shield,
-                        trailing: Switch(
-                          value: true,
-                          onChanged: (value) {},
-                          activeColor: Colors.blue[700],
-                        ),
-                        onTap: () {},
-                      ),
-                      _buildSettingRow(
-                        label: "Last Password Change",
-                        value: "30 days ago",
-                        icon: Icons.lock,
-                        onTap: () {},
-                      ),
-                      _buildSettingRow(
-                        label: "Active Sessions",
-                        value: "2 devices",
-                        icon: Icons.devices,
-                        onTap: () {},
+                        onChanged: (value) {},
                       ),
                       _buildSettingRow(
                         label: "Change Password",
-                        value: "",
+                        value: "********",
                         icon: Icons.password,
-                        trailing: OutlinedButton(
-                          onPressed: () {
-                            _showChangePasswordDialog(context);
-                          },
-                          child: Text("Change", style: TextStyle(fontSize: 12)),
-                          style: OutlinedButton.styleFrom(
-                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          ),
-                        ),
+                        trailing: _buildActionButton("Change", Colors.blue, () {
+                          _showChangePasswordDialog(context);
+                        }),
                         onTap: () {},
                       ),
                     ],
                   ),
-
-                  SizedBox(height: 20),
-
-                  // Data Management Card
-                  _buildSettingsCard(
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildSettingsCard(
                     title: "Data Management",
                     icon: Icons.data_usage,
                     children: [
-                      _buildDataActionRow(
+                      _buildActionRow(
                         icon: Icons.backup,
                         title: "Backup Data",
-                        subtitle: "Create a backup of all school data",
-                        buttonText: "Backup Now",
-                        buttonColor: Colors.blue,
-                        onTap: () {
-                          _showSnackbar(context, "Backup started...", Colors.blue);
-                        },
+                        buttonText: "Backup",
+                        color: Colors.blue,
+                        onTap: () => _showSnackbar(context, "Backup started...", Colors.blue),
                       ),
-                      _buildDataActionRow(
+                      _buildActionRow(
                         icon: Icons.restore,
                         title: "Restore Data",
-                        subtitle: "Restore data from backup",
                         buttonText: "Restore",
-                        buttonColor: Colors.orange,
-                        onTap: () {
-                          _showSnackbar(context, "Restore initiated...", Colors.orange);
-                        },
+                        color: Colors.orange,
+                        onTap: () => _showSnackbar(context, "Restore initiated...", Colors.orange),
                       ),
-                      _buildDataActionRow(
-                        icon: Icons.analytics,
-                        title: "Export Reports",
-                        subtitle: "Generate and export reports",
-                        buttonText: "Export",
-                        buttonColor: Colors.purple,
-                        onTap: () {},
-                      ),
-                      _buildDataActionRow(
+                      _buildActionRow(
                         icon: Icons.clear_all,
                         title: "Clear Cache",
-                        subtitle: "Clear temporary data",
                         buttonText: "Clear",
-                        buttonColor: Colors.red,
-                        onTap: () {
-                          _showSnackbar(context, "Cache cleared", Colors.green);
-                        },
+                        color: Colors.red,
+                        onTap: () => _showSnackbar(context, "Cache cleared", Colors.green),
                       ),
                     ],
                   ),
+                ),
+              ],
+            ),
 
-                  SizedBox(height: 20),
+            const SizedBox(height: 16),
 
-                  // Support Card
-                  _buildSettingsCard(
-                    title: "Support & About",
-                    icon: Icons.support,
-                    children: [
-                      _buildSupportRow(
-                        icon: Icons.help,
-                        title: "Help Center",
-                        subtitle: "Find answers to common questions",
-                        onTap: () {},
+            // Support Card (Full Width)
+            _buildSettingsCard(
+              title: "Support",
+              icon: Icons.support,
+              children: [
+                _buildSupportRow(
+                  icon: Icons.help,
+                  title: "Help Center",
+                  onTap: () => _showSnackbar(context, "Opening Help Center...", Colors.blue),
+                ),
+                _buildSupportRow(
+                  icon: Icons.feedback,
+                  title: "Send Feedback",
+                  onTap: () => _showFeedbackDialog(context),
+                ),
+                _buildSupportRow(
+                  icon: Icons.info,
+                  title: "About",
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[50],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      "v1.0.0",
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.blue[700],
+                        fontWeight: FontWeight.w500,
                       ),
-                      _buildSupportRow(
-                        icon: Icons.feedback,
-                        title: "Send Feedback",
-                        subtitle: "Help us improve",
-                        onTap: () {
-                          _showFeedbackDialog(context);
-                        },
-                      ),
-                      _buildSupportRow(
-                        icon: Icons.info,
-                        title: "About",
-                        subtitle: "Version 1.0.0",
-                        trailing: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.blue[50],
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            "v1.0.0",
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.blue[700],
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        onTap: () {
-                          _showAboutDialog(context);
-                        },
-                      ),
-                    ],
+                    ),
                   ),
+                  onTap: () => _showAboutDialog(context),
+                ),
+              ],
+            ),
 
-                  SizedBox(height: 30),
-                ],
+            const SizedBox(height: 30),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ============ BUILDERS ============
+
+  Widget _buildHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Settings",
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
               ),
             ),
-          ),
-        ],
-      ),
+            const SizedBox(height: 4),
+            Text(
+              "Manage your preferences",
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            OutlinedButton.icon(
+              onPressed: () => _showSnackbar(context, "Settings saved successfully!", Colors.green),
+              icon: const Icon(Icons.save, size: 18),
+              label: const Text("Save"),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              ),
+            ),
+            const SizedBox(width: 10),
+            ElevatedButton.icon(
+              onPressed: () => _showResetDialog(context),
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text("Reset"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
-  // Navigation Item
-  Widget _buildNavItem({
-    required IconData icon,
-    required String title,
-    required bool isActive,
-    required VoidCallback onTap,
-    Color? color,
-  }) {
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: isActive ? Colors.blue[50] : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
-        border: isActive ? Border.all(color: Colors.blue[200]!) : null,
-      ),
-      child: ListTile(
-        leading: Icon(
-          icon,
-          color: isActive ? Colors.blue[700] : (color ?? Colors.grey[600]),
-          size: 20,
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-            color: isActive ? Colors.blue[700] : (color ?? Colors.grey[700]),
-          ),
-        ),
-        onTap: onTap,
-        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-      ),
-    );
-  }
-
-  // Settings Card
   Widget _buildSettingsCard({
     required String title,
     required IconData icon,
@@ -620,19 +312,18 @@ class _SettingScreenState extends State<SettingScreen> {
           BoxShadow(
             color: Colors.black.withOpacity(0.02),
             blurRadius: 8,
-            offset: Offset(0, 2),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Card Header
           Container(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.grey[50],
-              borderRadius: BorderRadius.only(
+              borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
               ),
@@ -643,40 +334,30 @@ class _SettingScreenState extends State<SettingScreen> {
             child: Row(
               children: [
                 Container(
-                  padding: EdgeInsets.all(6),
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     color: Colors.blue[50],
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Icon(icon, color: Colors.blue[700], size: 18),
+                  child: Icon(icon, color: Colors.blue[700], size: 16),
                 ),
-                SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Text(
                   title,
-                  style: TextStyle(
-                    fontSize: 15,
+                  style: const TextStyle(
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Spacer(),
-                Text(
-                  "View All",
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.blue[700],
                   ),
                 ),
               ],
             ),
           ),
-          // Card Body
           ...children,
         ],
       ),
     );
   }
 
-  // Setting Row (Editable)
   Widget _buildSettingRow({
     required String label,
     required String value,
@@ -687,7 +368,7 @@ class _SettingScreenState extends State<SettingScreen> {
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(color: Colors.grey[100]!),
@@ -695,14 +376,14 @@ class _SettingScreenState extends State<SettingScreen> {
         ),
         child: Row(
           children: [
-            Icon(icon, color: Colors.grey[600], size: 18),
-            SizedBox(width: 12),
+            Icon(icon, color: Colors.grey[600], size: 16),
+            const SizedBox(width: 10),
             Expanded(
               flex: 2,
               child: Text(
                 label,
-                style: TextStyle(
-                  fontSize: 13,
+                style: const TextStyle(
+                  fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -712,21 +393,21 @@ class _SettingScreenState extends State<SettingScreen> {
               child: Text(
                 value,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 12,
                   color: Colors.grey[600],
                 ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             if (trailing != null) trailing,
             if (trailing == null)
-              Icon(Icons.chevron_right, color: Colors.grey[400], size: 18),
+              Icon(Icons.chevron_right, color: Colors.grey[400], size: 16),
           ],
         ),
       ),
     );
   }
 
-  // Dropdown Row
   Widget _buildDropdownRow({
     required String label,
     required String value,
@@ -735,7 +416,7 @@ class _SettingScreenState extends State<SettingScreen> {
     required ValueChanged<String> onChanged,
   }) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(color: Colors.grey[100]!),
@@ -743,14 +424,14 @@ class _SettingScreenState extends State<SettingScreen> {
       ),
       child: Row(
         children: [
-          Icon(icon, color: Colors.grey[600], size: 18),
-          SizedBox(width: 12),
+          Icon(icon, color: Colors.grey[600], size: 16),
+          const SizedBox(width: 10),
           Expanded(
             flex: 2,
             child: Text(
               label,
-              style: TextStyle(
-                fontSize: 13,
+              style: const TextStyle(
+                fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -759,19 +440,17 @@ class _SettingScreenState extends State<SettingScreen> {
             flex: 2,
             child: DropdownButton<String>(
               value: value,
-              icon: Icon(Icons.arrow_drop_down, size: 18),
-              underline: SizedBox(),
+              icon: const Icon(Icons.arrow_drop_down, size: 18),
+              underline: const SizedBox(),
               isExpanded: true,
               items: items.map((String item) {
                 return DropdownMenuItem<String>(
                   value: item,
-                  child: Text(item, style: TextStyle(fontSize: 13)),
+                  child: Text(item, style: const TextStyle(fontSize: 12)),
                 );
               }).toList(),
               onChanged: (String? newValue) {
-                if (newValue != null) {
-                  onChanged(newValue);
-                }
+                if (newValue != null) onChanged(newValue);
               },
             ),
           ),
@@ -780,16 +459,14 @@ class _SettingScreenState extends State<SettingScreen> {
     );
   }
 
-  // Switch Row
   Widget _buildSwitchRow({
     required String label,
     required bool value,
     required IconData icon,
     required ValueChanged<bool> onChanged,
-    String? subtitle,
   }) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(color: Colors.grey[100]!),
@@ -797,51 +474,37 @@ class _SettingScreenState extends State<SettingScreen> {
       ),
       child: Row(
         children: [
-          Icon(icon, color: Colors.grey[600], size: 18),
-          SizedBox(width: 12),
+          Icon(icon, color: Colors.grey[600], size: 16),
+          const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                if (subtitle != null)
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-              ],
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
           Switch(
             value: value,
             onChanged: onChanged,
             activeColor: Colors.blue[700],
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
         ],
       ),
     );
   }
 
-  // Data Action Row
-  Widget _buildDataActionRow({
+  Widget _buildActionRow({
     required IconData icon,
     required String title,
-    required String subtitle,
     required String buttonText,
-    required Color buttonColor,
+    required Color color,
     required VoidCallback onTap,
   }) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(color: Colors.grey[100]!),
@@ -850,67 +513,39 @@ class _SettingScreenState extends State<SettingScreen> {
       child: Row(
         children: [
           Container(
-            padding: EdgeInsets.all(8),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: buttonColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(6),
             ),
-            child: Icon(icon, color: buttonColor, size: 20),
+            child: Icon(icon, color: color, size: 16),
           ),
-          SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          ElevatedButton(
-            onPressed: onTap,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: buttonColor,
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(6),
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
               ),
             ),
-            child: Text(
-              buttonText,
-              style: TextStyle(fontSize: 11),
-            ),
           ),
+          _buildActionButton(buttonText, color, onTap),
         ],
       ),
     );
   }
 
-  // Support Row
   Widget _buildSupportRow({
     required IconData icon,
     required String title,
-    required String subtitle,
     required VoidCallback onTap,
     Widget? trailing,
   }) {
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(color: Colors.grey[100]!),
@@ -919,52 +554,60 @@ class _SettingScreenState extends State<SettingScreen> {
         child: Row(
           children: [
             Container(
-              padding: EdgeInsets.all(8),
+              padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
                 color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(6),
               ),
-              child: Icon(icon, color: Colors.blue[700], size: 20),
+              child: Icon(icon, color: Colors.blue[700], size: 16),
             ),
-            SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
             if (trailing != null) trailing,
             if (trailing == null)
-              Icon(Icons.chevron_right, color: Colors.grey[400], size: 18),
+              Icon(Icons.chevron_right, color: Colors.grey[400], size: 16),
           ],
         ),
       ),
     );
   }
 
-  // Edit Dialog
+  Widget _buildActionButton(String text, Color color, VoidCallback onTap) {
+    return ElevatedButton(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(6),
+        ),
+        minimumSize: const Size(50, 28),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+      ),
+    );
+  }
+
+  // ============ DIALOGS ============
+
   void _showEditDialog(BuildContext context, String label, String initialValue, Function(String) onSave) {
-    TextEditingController controller = TextEditingController(text: initialValue);
+    final controller = TextEditingController(text: initialValue);
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text("Edit $label", style: TextStyle(fontSize: 18)),
+        title: Text("Edit $label"),
         content: TextField(
           controller: controller,
           decoration: InputDecoration(
@@ -973,39 +616,48 @@ class _SettingScreenState extends State<SettingScreen> {
               borderRadius: BorderRadius.circular(8),
             ),
           ),
+          onSubmitted: (value) {
+            onSave(value);
+            Navigator.pop(context);
+            _showSnackbar(context, "$label updated", Colors.green);
+          },
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text("Cancel", style: TextStyle(fontSize: 13)),
+            child: const Text("Cancel"),
           ),
           ElevatedButton(
             onPressed: () {
               onSave(controller.text);
               Navigator.pop(context);
-              _showSnackbar(context, "$label updated successfully", Colors.green);
+              _showSnackbar(context, "$label updated", Colors.green);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue[700],
               foregroundColor: Colors.white,
             ),
-            child: Text("Save", style: TextStyle(fontSize: 13)),
+            child: const Text("Save"),
           ),
         ],
       ),
     );
   }
 
-  // Change Password Dialog
   void _showChangePasswordDialog(BuildContext context) {
+    final currentPassController = TextEditingController();
+    final newPassController = TextEditingController();
+    final confirmPassController = TextEditingController();
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text("Change Password", style: TextStyle(fontSize: 18)),
+        title: const Text("Change Password"),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
+              controller: currentPassController,
               obscureText: true,
               decoration: InputDecoration(
                 labelText: "Current Password",
@@ -1014,8 +666,9 @@ class _SettingScreenState extends State<SettingScreen> {
                 ),
               ),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             TextField(
+              controller: newPassController,
               obscureText: true,
               decoration: InputDecoration(
                 labelText: "New Password",
@@ -1024,11 +677,12 @@ class _SettingScreenState extends State<SettingScreen> {
                 ),
               ),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             TextField(
+              controller: confirmPassController,
               obscureText: true,
               decoration: InputDecoration(
-                labelText: "Confirm New Password",
+                labelText: "Confirm Password",
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -1039,34 +693,45 @@ class _SettingScreenState extends State<SettingScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text("Cancel", style: TextStyle(fontSize: 13)),
+            child: const Text("Cancel"),
           ),
           ElevatedButton(
             onPressed: () {
+              if (newPassController.text.isEmpty || confirmPassController.text.isEmpty) {
+                _showSnackbar(context, "Please fill all fields", Colors.red);
+                return;
+              }
+              if (newPassController.text != confirmPassController.text) {
+                _showSnackbar(context, "Passwords don't match", Colors.red);
+                return;
+              }
               Navigator.pop(context);
-              _showSnackbar(context, "Password changed successfully", Colors.green);
+              _showSnackbar(context, "Password changed successfully!", Colors.green);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue[700],
               foregroundColor: Colors.white,
             ),
-            child: Text("Update Password", style: TextStyle(fontSize: 13)),
+            child: const Text("Update"),
           ),
         ],
       ),
     );
   }
 
-  // Feedback Dialog
   void _showFeedbackDialog(BuildContext context) {
+    final subjectController = TextEditingController();
+    final messageController = TextEditingController();
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text("Send Feedback", style: TextStyle(fontSize: 18)),
+        title: const Text("Send Feedback"),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
+              controller: subjectController,
               decoration: InputDecoration(
                 labelText: "Subject",
                 border: OutlineInputBorder(
@@ -1074,8 +739,9 @@ class _SettingScreenState extends State<SettingScreen> {
                 ),
               ),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             TextField(
+              controller: messageController,
               maxLines: 4,
               decoration: InputDecoration(
                 labelText: "Message",
@@ -1089,43 +755,46 @@ class _SettingScreenState extends State<SettingScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text("Cancel", style: TextStyle(fontSize: 13)),
+            child: const Text("Cancel"),
           ),
           ElevatedButton(
             onPressed: () {
+              if (subjectController.text.isEmpty || messageController.text.isEmpty) {
+                _showSnackbar(context, "Please fill all fields", Colors.red);
+                return;
+              }
               Navigator.pop(context);
-              _showSnackbar(context, "Feedback sent successfully", Colors.green);
+              _showSnackbar(context, "Feedback sent successfully!", Colors.green);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue[700],
               foregroundColor: Colors.white,
             ),
-            child: Text("Send", style: TextStyle(fontSize: 13)),
+            child: const Text("Send"),
           ),
         ],
       ),
     );
   }
 
-  // About Dialog
   void _showAboutDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text("About", style: TextStyle(fontSize: 18)),
+        title: const Text("About"),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.school, size: 64, color: Colors.blue[700]),
-            SizedBox(height: 12),
-            Text(
+            const SizedBox(height: 12),
+            const Text(
               "School Management System",
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Text(
               "Version 1.0.0",
               style: TextStyle(
@@ -1133,16 +802,16 @@ class _SettingScreenState extends State<SettingScreen> {
                 color: Colors.grey[600],
               ),
             ),
-            SizedBox(height: 12),
-            Text(
-              "A comprehensive school management solution for administrators, teachers, and students.",
+            const SizedBox(height: 12),
+             Text(
+              "A comprehensive school management solution.",
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
                 color: Colors.grey[700],
               ),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
               "© 2024 School Management System",
               style: TextStyle(
@@ -1155,7 +824,48 @@ class _SettingScreenState extends State<SettingScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text("Close", style: TextStyle(fontSize: 13)),
+            child: const Text("Close"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showResetDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Reset All Settings"),
+        content: const Text("Are you sure you want to reset all settings to default?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                // Reset to defaults
+                pushNotifications = true;
+                emailNotifications = false;
+                smsNotifications = true;
+                attendanceAlerts = true;
+                examAlerts = true;
+                feeAlerts = false;
+                selectedTheme = 'Light';
+                selectedLanguage = 'English';
+                schoolName = 'Sunrise School';
+                schoolEmail = 'info@sunriseschool.com';
+                schoolPhone = '+91 98765 43210';
+              });
+              Navigator.pop(context);
+              _showSnackbar(context, "All settings reset to default", Colors.green);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text("Reset All"),
           ),
         ],
       ),
@@ -1165,9 +875,13 @@ class _SettingScreenState extends State<SettingScreen> {
   void _showSnackbar(BuildContext context, String message, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: TextStyle(fontSize: 13)),
+        content: Text(message),
         backgroundColor: color,
-        duration: Duration(seconds: 1),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
       ),
     );
   }

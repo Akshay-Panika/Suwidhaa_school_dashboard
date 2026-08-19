@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 
 class ApiClient {
-
   static final Dio dio = Dio(
     BaseOptions(
       baseUrl: "https://suwidhaa-backend.onrender.com/api/",
@@ -13,5 +12,5 @@ class ApiClient {
       },
     ),
   );
-
 }
+

@@ -35,6 +35,7 @@ dependencies:
   fluttertoast: ^10.0.0
   dio: ^5.11.0
   get: ^4.7.3
+  file_picker: ^6.1.1
 
 dev_dependencies:
   flutter_test:
