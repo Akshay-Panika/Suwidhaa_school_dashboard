@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
-import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:file_picker/file_picker.dart';
 
 // ============ ENUMS ============
 enum FeeFilter { all, paid, partial, pending, overdue }
@@ -453,19 +453,19 @@ class _FeeScreenState extends State<FeeScreen> {
       filtered = filtered
           .where(
             (record) =>
-                record['name'].toLowerCase().contains(
-                  _searchQuery.toLowerCase(),
-                ) ||
-                record['id'].toLowerCase().contains(
-                  _searchQuery.toLowerCase(),
-                ) ||
-                record['class'].toLowerCase().contains(
-                  _searchQuery.toLowerCase(),
-                ) ||
-                record['school'].toLowerCase().contains(
-                  _searchQuery.toLowerCase(),
-                ),
-          )
+        record['name'].toLowerCase().contains(
+          _searchQuery.toLowerCase(),
+        ) ||
+            record['id'].toLowerCase().contains(
+              _searchQuery.toLowerCase(),
+            ) ||
+            record['class'].toLowerCase().contains(
+              _searchQuery.toLowerCase(),
+            ) ||
+            record['school'].toLowerCase().contains(
+              _searchQuery.toLowerCase(),
+            ),
+      )
           .toList();
     }
 
@@ -478,31 +478,31 @@ class _FeeScreenState extends State<FeeScreen> {
   int get _paidRecords => _feeRecords
       .where(
         (r) =>
-            r['category'] == _selectedCategory &&
-            r['status'] == 'Paid' &&
-            (_currentSchoolFilter == SchoolFilter.all ||
-                r['school'] == _getSchoolFilterValue()),
-      )
+    r['category'] == _selectedCategory &&
+        r['status'] == 'Paid' &&
+        (_currentSchoolFilter == SchoolFilter.all ||
+            r['school'] == _getSchoolFilterValue()),
+  )
       .length;
 
   int get _partialRecords => _feeRecords
       .where(
         (r) =>
-            r['category'] == _selectedCategory &&
-            r['status'] == 'Partial' &&
-            (_currentSchoolFilter == SchoolFilter.all ||
-                r['school'] == _getSchoolFilterValue()),
-      )
+    r['category'] == _selectedCategory &&
+        r['status'] == 'Partial' &&
+        (_currentSchoolFilter == SchoolFilter.all ||
+            r['school'] == _getSchoolFilterValue()),
+  )
       .length;
 
   int get _pendingRecords => _feeRecords
       .where(
         (r) =>
-            r['category'] == _selectedCategory &&
-            r['status'] == 'Pending' &&
-            (_currentSchoolFilter == SchoolFilter.all ||
-                r['school'] == _getSchoolFilterValue()),
-      )
+    r['category'] == _selectedCategory &&
+        r['status'] == 'Pending' &&
+        (_currentSchoolFilter == SchoolFilter.all ||
+            r['school'] == _getSchoolFilterValue()),
+  )
       .length;
 
   String _getSchoolFilterValue() {
@@ -515,10 +515,10 @@ class _FeeScreenState extends State<FeeScreen> {
     final data = _feeRecords
         .where(
           (i) =>
-              i['category'] == _selectedCategory &&
-              (_currentSchoolFilter == SchoolFilter.all ||
-                  i['school'] == _getSchoolFilterValue()),
-        )
+      i['category'] == _selectedCategory &&
+          (_currentSchoolFilter == SchoolFilter.all ||
+              i['school'] == _getSchoolFilterValue()),
+    )
         .toList();
     int total = 0, paid = 0, due = 0;
     for (var item in data) {
@@ -655,7 +655,7 @@ class _FeeScreenState extends State<FeeScreen> {
 
     final updatedRecord = _createRecordFromForm(_selectedRecord!['id']);
     final index = _feeRecords.indexWhere(
-      (r) => r['id'] == _selectedRecord!['id'],
+          (r) => r['id'] == _selectedRecord!['id'],
     );
 
     if (index != -1) {
@@ -713,17 +713,34 @@ class _FeeScreenState extends State<FeeScreen> {
     );
   }
 
-  // ============ IMAGE PICKER ============
+  // ============ IMAGE PICKER USING FILE_PICKER ============
   Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 500,
-      maxHeight: 500,
-      imageQuality: 80,
-    );
-    if (pickedFile != null) {
-      setState(() => _imageFile = File(pickedFile.path));
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+        withData: false,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        // Check if file size is reasonable (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          _showSnackbar('Image size too large. Please select an image under 5MB.', Colors.orange);
+          return;
+        }
+        String? filePath = file.path;
+        if (filePath != null) {
+          setState(() {
+            _imageFile = File(filePath);
+          });
+          _showSnackbar('Image uploaded successfully!', Colors.green);
+        } else {
+          _showSnackbar('Failed to get image file path', Colors.red);
+        }
+      }
+    } catch (e) {
+      _showSnackbar('Error picking image: ${e.toString()}', Colors.red);
     }
   }
 
@@ -817,12 +834,12 @@ class _FeeScreenState extends State<FeeScreen> {
                     child: _filteredRecords.isEmpty
                         ? _buildEmptyState()
                         : ListView.builder(
-                            padding: const EdgeInsets.all(12),
-                            itemCount: _filteredRecords.length,
-                            itemBuilder: (context, index) {
-                              return _buildRecordCard(_filteredRecords[index]);
-                            },
-                          ),
+                      padding: const EdgeInsets.all(12),
+                      itemCount: _filteredRecords.length,
+                      itemBuilder: (context, index) {
+                        return _buildRecordCard(_filteredRecords[index]);
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -843,10 +860,10 @@ class _FeeScreenState extends State<FeeScreen> {
               ),
               child: _showRightPanel
                   ? (_isAddingNew
-                        ? _buildAddPanel()
-                        : _isEditing
-                        ? _buildEditPanel()
-                        : _buildViewPanel())
+                  ? _buildAddPanel()
+                  : _isEditing
+                  ? _buildEditPanel()
+                  : _buildViewPanel())
                   : _buildEmptyRightPanel(stats),
             ),
           ],
@@ -986,9 +1003,9 @@ class _FeeScreenState extends State<FeeScreen> {
 
   // ============ HEADER ============
   Widget _buildHeader(
-    Map<String, dynamic> stats,
-    Map<String, int> schoolStats,
-  ) {
+      Map<String, dynamic> stats,
+      Map<String, int> schoolStats,
+      ) {
     final schoolFilterLabel = _currentSchoolFilter == SchoolFilter.all
         ? 'All Schools'
         : _currentSchoolFilter == SchoolFilter.schoolA
@@ -1818,11 +1835,11 @@ class _FeeScreenState extends State<FeeScreen> {
   }
 
   Widget _buildDetailRow(
-    String label,
-    String value, {
-    Color? color,
-    bool isBold = false,
-  }) {
+      String label,
+      String value, {
+        Color? color,
+        bool isBold = false,
+      }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -2018,8 +2035,8 @@ class _FeeScreenState extends State<FeeScreen> {
 
         // School Selection
         _buildDropdownField('School', _selectedSchoolForm, _schoolList, (
-          value,
-        ) {
+            value,
+            ) {
           setState(() {
             _selectedSchoolForm = value!;
           });
@@ -2054,8 +2071,8 @@ class _FeeScreenState extends State<FeeScreen> {
 
         // Category Dropdown
         _buildDropdownField('Category', _selectedCategoryForm, _categoryList, (
-          value,
-        ) {
+            value,
+            ) {
           setState(() {
             _selectedCategoryForm = value!;
             _amountController.clear();
@@ -2078,7 +2095,7 @@ class _FeeScreenState extends State<FeeScreen> {
             'Designation',
             _selectedClassForm,
             _teacherSalaries.keys.toList(),
-            (value) {
+                (value) {
               setState(() {
                 _selectedClassForm = value!;
                 _amountController.text = _teacherSalaries[_selectedClassForm]
@@ -2091,7 +2108,7 @@ class _FeeScreenState extends State<FeeScreen> {
             'Expense Type',
             _selectedExpenseType,
             _expenseTypeList,
-            (value) {
+                (value) {
               setState(() => _selectedExpenseType = value!);
             },
           ),
@@ -2104,7 +2121,7 @@ class _FeeScreenState extends State<FeeScreen> {
           Icons.attach_money,
           required: true,
           enabled:
-              _selectedCategoryForm != 'Students' &&
+          _selectedCategoryForm != 'Students' &&
               _selectedCategoryForm != 'Teachers',
         ),
         const SizedBox(height: 8),
@@ -2121,7 +2138,7 @@ class _FeeScreenState extends State<FeeScreen> {
           'Payment Mode',
           _selectedPaymentMode,
           _paymentModeList,
-          (value) {
+              (value) {
             setState(() => _selectedPaymentMode = value!);
           },
         ),
@@ -2149,14 +2166,14 @@ class _FeeScreenState extends State<FeeScreen> {
   }
 
   Widget _buildFormTextField(
-    TextEditingController controller,
-    String label,
-    IconData icon, {
-    String? hint,
-    int maxLines = 1,
-    bool required = false,
-    bool enabled = true,
-  }) {
+      TextEditingController controller,
+      String label,
+      IconData icon, {
+        String? hint,
+        int maxLines = 1,
+        bool required = false,
+        bool enabled = true,
+      }) {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
@@ -2191,11 +2208,11 @@ class _FeeScreenState extends State<FeeScreen> {
   }
 
   Widget _buildDropdownField(
-    String label,
-    String value,
-    List<String> items,
-    Function(String?) onChanged,
-  ) {
+      String label,
+      String value,
+      List<String> items,
+      Function(String?) onChanged,
+      ) {
     return DropdownButtonFormField<String>(
       value: items.contains(value) ? value : items.first,
       decoration: InputDecoration(
@@ -2242,24 +2259,24 @@ class _FeeScreenState extends State<FeeScreen> {
         ),
         child: _imageFile != null
             ? ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.file(_imageFile!, fit: BoxFit.cover),
-              )
+          borderRadius: BorderRadius.circular(12),
+          child: Image.file(_imageFile!, fit: BoxFit.cover),
+        )
             : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.camera_alt, color: Colors.blue[700], size: 24),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Upload Photo',
-                    style: TextStyle(
-                      fontSize: 9,
-                      color: Colors.grey[500],
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.camera_alt, color: Colors.blue[700], size: 24),
+            const SizedBox(height: 2),
+            Text(
+              'Upload Photo',
+              style: TextStyle(
+                fontSize: 9,
+                color: Colors.grey[500],
+                fontWeight: FontWeight.w500,
               ),
+            ),
+          ],
+        ),
       ),
     );
   }

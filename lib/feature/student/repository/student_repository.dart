@@ -1,165 +1,215 @@
-// student_repository.dart
+// lib/repositories/student_repository.dart
+import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb, Uint8List;
 import '../../../core/network/api_client.dart';
 import '../model/student_model.dart';
 
 class StudentRepository {
-  final Dio _dio = ApiClient.dio;
+  final Dio dio = ApiClient.dio;
 
   // Get all students
-  Future<List<StudentModel>> getAllStudents() async {
+  Future<List<StudentModel>> getStudents() async {
     try {
-      final response = await _dio.get('/students/');
+      final response = await dio.get('v1/school/student/list/');
+
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data;
-        print('✅ Students found: ${data.length}');
-        return data.map((json) => StudentModel.fromJson(json)).toList();
-      } else {
-        throw Exception('Failed to load students: ${response.statusCode}');
+        final data = response.data;
+        if (data['success'] == true) {
+          final List<dynamic> studentData = data['data'] ?? [];
+          return studentData.map((json) => StudentModel.fromApiJson(json)).toList();
+        }
       }
-    } on DioException catch (e) {
-      print('❌ Dio Error: ${e.message}');
-      if (e.response != null) {
-        print('❌ Status: ${e.response?.statusCode}');
-        print('❌ Data: ${e.response?.data}');
-      }
-      throw Exception('Network error: ${e.message}');
+      return [];
     } catch (e) {
-      print('❌ Unexpected error: $e');
-      throw Exception('Unexpected error: $e');
+      throw Exception('Failed to load students: $e');
     }
   }
 
-  // Add new student
-  Future<StudentModel> addStudent(StudentModel student) async {
+  // Create student with file upload
+  Future<StudentModel> createStudent({
+    required StudentModel student,
+    File? studentProfile,
+    Uint8List? studentProfileBytes, // For Web support
+  }) async {
     try {
-      final response = await _dio.post(
-        '/students/',
-        data: student.toJson(),
+      FormData formData = FormData.fromMap({
+        'first_name': student.firstName,
+        'middle_name': student.middleName,
+        'last_name': student.lastName,
+        'dob': student.dob,
+        'gender': student.gender,
+        'father_name': student.fatherName,
+        'mother_name': student.motherName,
+        'parent_phone': student.parentPhone,
+        'alternative_phone': student.alternativePhone ?? '',
+        'adhar_number': student.adharNumber,
+        'SSSMID': student.sssmid,
+        'student_class': student.studentClass,
+        'roll_number': student.rollNumber,
+        'address': student.address,
+        'caste_category': student.casteCategory,
+        'fee_status': student.feeStatus,
+        'fee_amount': student.feeAmount,
+        'paid_amount': student.paidAmount,
+        'check_box': student.checkBox,
+        'school_type': student.schoolType ?? '',
+      });
+
+      // Handle file upload based on platform
+      if (kIsWeb) {
+        // Web: Use bytes directly
+        if (studentProfileBytes != null && studentProfileBytes.isNotEmpty) {
+          final multipartFile = MultipartFile.fromBytes(
+            studentProfileBytes,
+            filename: 'profile.jpg',
+            contentType: DioMediaType.parse('image/jpeg'),
+          );
+          formData.files.add(MapEntry('student_profile', multipartFile));
+          print('✅ Web: Added image bytes (${studentProfileBytes.length} bytes)');
+        } else {
+          print('⚠️ Web: No image bytes provided');
+        }
+      } else {
+        // Mobile/Desktop: Use file path
+        if (studentProfile != null) {
+          final multipartFile = await MultipartFile.fromFile(
+            studentProfile.path,
+            filename: studentProfile.path.split('/').last,
+            contentType: DioMediaType.parse('image/jpeg'),
+          );
+          formData.files.add(MapEntry('student_profile', multipartFile));
+          print('✅ Mobile: Added image from path: ${studentProfile.path}');
+        } else {
+          print('⚠️ Mobile: No image file provided');
+        }
+      }
+
+      print('📤 Creating Student - Fields: ${formData.fields.length}, Files: ${formData.files.length}');
+
+      final response = await dio.post(
+        'v1/school/student/create/',
+        data: formData,
+        options: Options(
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        ),
       );
 
-      print('📤 POST Request URL: ${_dio.options.baseUrl}students/');
-      print('📤 Request Data: ${student.toJson()}');
-      print('📥 Response status: ${response.statusCode}');
+      print('📥 Response Status: ${response.statusCode}');
+      print('📥 Response Data: ${response.data}');
 
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        return StudentModel.fromJson(response.data);
-      } else {
-        throw Exception('Failed to add student: ${response.statusCode}');
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = response.data;
+        if (data['success'] == true) {
+          return StudentModel.fromApiJson(data['data'] ?? {});
+        }
+        throw Exception('API returned error: ${data['message']}');
       }
-    } on DioException catch (e) {
-      print('❌ Dio Error: ${e.message}');
-      if (e.response != null) {
-        print('❌ Status: ${e.response?.statusCode}');
-        print('❌ Response Data: ${e.response?.data}');
-        throw Exception('Failed to add student: ${e.response?.data}');
-      }
-      throw Exception('Network error: ${e.message}');
+      throw Exception('Failed to create student: ${response.statusCode}');
+    } catch (e) {
+      print('❌ Error: $e');
+      throw Exception('Error: $e');
     }
   }
 
   // Update student
-  Future<StudentModel> updateStudent(int id, StudentModel student) async {
+  Future<StudentModel> updateStudent({
+    required int id,
+    required StudentModel student,
+    File? studentProfile,
+    Uint8List? studentProfileBytes, // For Web support
+  }) async {
     try {
-      final response = await _dio.put(
-        '/students/$id/',
-        data: student.toJson(),
+      FormData formData = FormData.fromMap({
+        'first_name': student.firstName,
+        'middle_name': student.middleName,
+        'last_name': student.lastName,
+        'dob': student.dob,
+        'gender': student.gender,
+        'father_name': student.fatherName,
+        'mother_name': student.motherName,
+        'parent_phone': student.parentPhone,
+        'alternative_phone': student.alternativePhone ?? '',
+        'adhar_number': student.adharNumber,
+        'SSSMID': student.sssmid,
+        'student_class': student.studentClass,
+        'roll_number': student.rollNumber,
+        'address': student.address,
+        'caste_category': student.casteCategory,
+        'fee_status': student.feeStatus,
+        'fee_amount': student.feeAmount,
+        'paid_amount': student.paidAmount,
+        'check_box': student.checkBox,
+        'school_type': student.schoolType ?? '',
+      });
+
+      // Handle file upload based on platform
+      if (kIsWeb) {
+        // Web: Use bytes directly
+        if (studentProfileBytes != null && studentProfileBytes.isNotEmpty) {
+          final multipartFile = MultipartFile.fromBytes(
+            studentProfileBytes,
+            filename: 'profile.jpg',
+            contentType: DioMediaType.parse('image/jpeg'),
+          );
+          formData.files.add(MapEntry('student_profile', multipartFile));
+          print('✅ Web: Updated image bytes (${studentProfileBytes.length} bytes)');
+        } else {
+          print('⚠️ Web: No image bytes provided for update');
+        }
+      } else {
+        // Mobile/Desktop: Use file path
+        if (studentProfile != null) {
+          final multipartFile = await MultipartFile.fromFile(
+            studentProfile.path,
+            filename: studentProfile.path.split('/').last,
+            contentType: DioMediaType.parse('image/jpeg'),
+          );
+          formData.files.add(MapEntry('student_profile', multipartFile));
+          print('✅ Mobile: Updated image from path: ${studentProfile.path}');
+        } else {
+          print('⚠️ Mobile: No image file provided for update');
+        }
+      }
+
+      print('📤 Updating Student ID: $id - Fields: ${formData.fields.length}, Files: ${formData.files.length}');
+
+      final response = await dio.put(
+        'v1/school/student/$id/',
+        data: formData,
+        options: Options(
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        ),
       );
 
-      print('📤 PUT Request URL: ${_dio.options.baseUrl}students/$id/');
-      print('📤 Request Data: ${student.toJson()}');
-      print('📥 Response status: ${response.statusCode}');
+      print('📥 Response Status: ${response.statusCode}');
+      print('📥 Response Data: ${response.data}');
 
       if (response.statusCode == 200) {
-        return StudentModel.fromJson(response.data);
-      } else {
-        throw Exception('Failed to update student: ${response.statusCode}');
+        final data = response.data;
+        if (data['success'] == true) {
+          return StudentModel.fromApiJson(data['data'] ?? {});
+        }
+        throw Exception('API returned error: ${data['message']}');
       }
-    } on DioException catch (e) {
-      print('❌ Dio Error: ${e.message}');
-      if (e.response != null) {
-        print('❌ Status: ${e.response?.statusCode}');
-        print('❌ Response Data: ${e.response?.data}');
-        throw Exception('Failed to update student: ${e.response?.data}');
-      }
-      throw Exception('Network error: ${e.message}');
+      throw Exception('Failed to update student: ${response.statusCode}');
+    } catch (e) {
+      print('❌ Error: $e');
+      throw Exception('Error: $e');
     }
   }
 
   // Delete student
-  Future<void> deleteStudent(int id) async {
+  Future<bool> deleteStudent(int id) async {
     try {
-      final response = await _dio.delete(
-        '/students/$id/',
-      );
-
-      print('📤 DELETE Request URL: ${_dio.options.baseUrl}students/$id/');
-      print('📥 Response status: ${response.statusCode}');
-
-      if (response.statusCode != 204 && response.statusCode != 200) {
-        throw Exception('Failed to delete student: ${response.statusCode}');
-      }
-    } on DioException catch (e) {
-      print('❌ Dio Error: ${e.message}');
-      if (e.response != null) {
-        print('❌ Status: ${e.response?.statusCode}');
-        print('❌ Response Data: ${e.response?.data}');
-        throw Exception('Failed to delete student: ${e.response?.data}');
-      }
-      throw Exception('Network error: ${e.message}');
-    }
-  }
-
-  // Get single student by ID
-  Future<StudentModel> getStudentById(int id) async {
-    try {
-      final response = await _dio.get(
-        '/students/$id/',
-      );
-
-      print('📤 GET Request URL: ${_dio.options.baseUrl}students/$id/');
-      print('📥 Response status: ${response.statusCode}');
-
-      if (response.statusCode == 200) {
-        return StudentModel.fromJson(response.data);
-      } else {
-        throw Exception('Failed to load student: ${response.statusCode}');
-      }
-    } on DioException catch (e) {
-      print('❌ Dio Error: ${e.message}');
-      if (e.response != null) {
-        print('❌ Status: ${e.response?.statusCode}');
-        print('❌ Response Data: ${e.response?.data}');
-        throw Exception('Failed to load student: ${e.response?.data}');
-      }
-      throw Exception('Network error: ${e.message}');
-    }
-  }
-
-  // Search students by name or roll number
-  Future<List<StudentModel>> searchStudents(String query) async {
-    try {
-      final response = await _dio.get(
-        '/students/?search=$query',
-      );
-
-      print('📤 Search Request URL: ${_dio.options.baseUrl}students/?search=$query');
-      print('📥 Response status: ${response.statusCode}');
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = response.data;
-        return data.map((json) => StudentModel.fromJson(json)).toList();
-      } else {
-        throw Exception('Failed to search students: ${response.statusCode}');
-      }
-    } on DioException catch (e) {
-      print('❌ Dio Error: ${e.message}');
-      if (e.response != null) {
-        print('❌ Status: ${e.response?.statusCode}');
-        print('❌ Response Data: ${e.response?.data}');
-        throw Exception('Failed to search students: ${e.response?.data}');
-      }
-      throw Exception('Network error: ${e.message}');
+      final response = await dio.delete('v1/school/student/$id/');
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      throw Exception('Error: $e');
     }
   }
 }

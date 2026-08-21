@@ -1,8 +1,14 @@
+// lib/screens/student_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
-import 'package:image_picker/image_picker.dart';
+import 'dart:convert';
 import 'package:intl/intl.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:shimmer/shimmer.dart';
+import '../model/student_model.dart';
+import '../repository/student_repository.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 // ============ ENUMS ============
 enum StudentFilter {
@@ -30,119 +36,6 @@ enum SchoolFilter {
   schoolB,
 }
 
-// ============ MODEL ============
-class StudentModel {
-  final String id;
-  final String firstName;
-  final String middleName;
-  final String lastName;
-  final String dob;
-  final String gender;
-  final String fatherName;
-  final String motherName;
-  final String parentPhone;
-  final String alternativePhone;
-  final String studentClass;
-  final String rollNumber;
-  final String admissionNumber;
-  final String email;
-  final String address;
-  final String casteCategory;
-  final String adharNumber;
-  final String sssmid;
-  final String feeStatus;
-  final String feeAmount;
-  final String paidAmount;
-  final bool checkBox;
-  final String? profileImage;
-  final String school;
-  final String createdAt;
-
-  StudentModel({
-    required this.id,
-    required this.firstName,
-    this.middleName = '',
-    required this.lastName,
-    required this.dob,
-    required this.gender,
-    required this.fatherName,
-    required this.motherName,
-    required this.parentPhone,
-    this.alternativePhone = '',
-    required this.studentClass,
-    required this.rollNumber,
-    required this.admissionNumber,
-    required this.email,
-    required this.address,
-    this.casteCategory = '',
-    this.adharNumber = '',
-    this.sssmid = '',
-    required this.feeStatus,
-    this.feeAmount = '0.00',
-    this.paidAmount = '0.00',
-    this.checkBox = true,
-    this.profileImage,
-    this.school = 'School A',
-    this.createdAt = '',
-  });
-
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'firstName': firstName,
-    'middleName': middleName,
-    'lastName': lastName,
-    'dob': dob,
-    'gender': gender,
-    'fatherName': fatherName,
-    'motherName': motherName,
-    'parentPhone': parentPhone,
-    'alternativePhone': alternativePhone,
-    'studentClass': studentClass,
-    'rollNumber': rollNumber,
-    'admissionNumber': admissionNumber,
-    'email': email,
-    'address': address,
-    'casteCategory': casteCategory,
-    'adharNumber': adharNumber,
-    'sssmid': sssmid,
-    'feeStatus': feeStatus,
-    'feeAmount': feeAmount,
-    'paidAmount': paidAmount,
-    'checkBox': checkBox,
-    'profileImage': profileImage,
-    'school': school,
-    'createdAt': createdAt,
-  };
-
-  factory StudentModel.fromJson(Map<String, dynamic> json) => StudentModel(
-    id: json['id'],
-    firstName: json['firstName'],
-    middleName: json['middleName'] ?? '',
-    lastName: json['lastName'],
-    dob: json['dob'],
-    gender: json['gender'],
-    fatherName: json['fatherName'],
-    motherName: json['motherName'],
-    parentPhone: json['parentPhone'],
-    alternativePhone: json['alternativePhone'] ?? '',
-    studentClass: json['studentClass'],
-    rollNumber: json['rollNumber'],
-    admissionNumber: json['admissionNumber'],
-    email: json['email'],
-    address: json['address'],
-    casteCategory: json['casteCategory'] ?? '',
-    adharNumber: json['adharNumber'] ?? '',
-    sssmid: json['sssmid'] ?? '',
-    feeStatus: json['feeStatus'],
-    feeAmount: json['feeAmount'] ?? '0.00',
-    paidAmount: json['paidAmount'] ?? '0.00',
-    checkBox: json['checkBox'] ?? true,
-    profileImage: json['profileImage'],
-    school: json['school'] ?? 'School A',
-    createdAt: json['createdAt'] ?? '',
-  );
-}
-
 // ============ MAIN SCREEN ============
 class StudentScreen extends StatefulWidget {
   const StudentScreen({super.key});
@@ -152,8 +45,13 @@ class StudentScreen extends StatefulWidget {
 }
 
 class _StudentScreenState extends State<StudentScreen> {
+  // ============ REPOSITORY ============
+  final StudentRepository _repository = StudentRepository();
+
   // ============ STATE ============
   List<StudentModel> _students = [];
+  bool _isLoading = true;
+  bool _isSubmitting = false;
   StudentFilter _currentFilter = StudentFilter.all;
   SchoolFilter _currentSchoolFilter = SchoolFilter.all;
   String _searchQuery = '';
@@ -197,6 +95,7 @@ class _StudentScreenState extends State<StudentScreen> {
   String _selectedSchoolForm = 'School A';
   bool _checkBox = true;
   File? _imageFile;
+  Uint8List? _imageBytes;
 
   // ============ CONSTANTS ============
   final List<String> _classList = [
@@ -207,10 +106,12 @@ class _StudentScreenState extends State<StudentScreen> {
   final List<String> _feeStatusList = ['Paid', 'Pending', 'Overdue'];
   final List<String> _schoolList = ['School A', 'School B'];
 
+  bool get _isWeb => kIsWeb;
+
   @override
   void initState() {
     super.initState();
-    _loadSampleData();
+    _loadStudents();
     _generateSampleAttendance();
   }
 
@@ -237,272 +138,163 @@ class _StudentScreenState extends State<StudentScreen> {
     super.dispose();
   }
 
-  // ============ SAMPLE DATA ============
-  void _loadSampleData() {
-    _students = [
-      // ===== School A Students =====
-      StudentModel(
-        id: 'S001',
-        firstName: 'Aarav',
-        middleName: 'Kumar',
-        lastName: 'Sharma',
-        dob: '15 Jan 2015',
-        gender: 'Male',
-        fatherName: 'Rajesh Sharma',
-        motherName: 'Sunita Sharma',
-        parentPhone: '+91 98765 43210',
-        alternativePhone: '+91 98765 43211',
-        studentClass: '5th',
-        rollNumber: '101',
-        admissionNumber: 'ADM2023001',
-        email: 'aarav@student.com',
-        address: '123, Green Park, New Delhi',
-        casteCategory: 'General',
-        adharNumber: '1234 5678 9012',
-        sssmid: 'SSM2023001',
-        feeStatus: 'Paid',
-        feeAmount: '5000',
-        paidAmount: '5000',
-        checkBox: true,
-        school: 'School A',
-        createdAt: 'Jan 2023',
+  // ============ API METHODS ============
+  Future<void> _loadStudents() async {
+    setState(() => _isLoading = true);
+    try {
+      final students = await _repository.getStudents();
+      setState(() {
+        _students = students;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      _showSnackbar('Failed to load students: $e', Colors.red);
+    }
+  }
+
+  Future<void> _createStudent() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final student = StudentModel(
+        firstName: _firstNameController.text.trim(),
+        middleName: _middleNameController.text.trim(),
+        lastName: _lastNameController.text.trim(),
+        dob: _dobController.text.trim(),
+        gender: _selectedGender,
+        fatherName: _fatherNameController.text.trim(),
+        motherName: _motherNameController.text.trim(),
+        parentPhone: _parentPhoneController.text.trim(),
+        alternativePhone: _altPhoneController.text.trim(),
+        adharNumber: _adharNumberController.text.trim(),
+        sssmid: _sssmidController.text.trim(),
+        studentClass: _selectedClass,
+        rollNumber: _rollNoController.text.trim(),
+        address: _addressController.text.trim(),
+        casteCategory: _casteCategoryController.text.trim(),
+        feeStatus: _selectedFeeStatus,
+        feeAmount: _feeAmountController.text.trim().isEmpty ? '0.00' : _feeAmountController.text.trim(),
+        paidAmount: _paidAmountController.text.trim().isEmpty ? '0.00' : _paidAmountController.text.trim(),
+        checkBox: _checkBox,
+        schoolType: _selectedSchoolForm,
+      );
+
+      final created = await _repository.createStudent(
+        student: student,
+        studentProfile: _imageFile,
+        studentProfileBytes: _imageBytes,
+      );
+
+      setState(() {
+        _students.insert(0, created);
+        _showRightPanel = false;
+        _isAddingNew = false;
+        _resetForm();
+      });
+
+      _showSnackbar('Student added successfully!', Colors.green);
+    } catch (e) {
+      _showSnackbar('Failed to create student: $e', Colors.red);
+    } finally {
+      setState(() => _isSubmitting = false);
+    }
+  }
+
+  Future<void> _updateStudent() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_selectedStudent?.id == null) return;
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final student = StudentModel(
+        firstName: _firstNameController.text.trim(),
+        middleName: _middleNameController.text.trim(),
+        lastName: _lastNameController.text.trim(),
+        dob: _dobController.text.trim(),
+        gender: _selectedGender,
+        fatherName: _fatherNameController.text.trim(),
+        motherName: _motherNameController.text.trim(),
+        parentPhone: _parentPhoneController.text.trim(),
+        alternativePhone: _altPhoneController.text.trim(),
+        adharNumber: _adharNumberController.text.trim(),
+        sssmid: _sssmidController.text.trim(),
+        studentClass: _selectedClass,
+        rollNumber: _rollNoController.text.trim(),
+        address: _addressController.text.trim(),
+        casteCategory: _casteCategoryController.text.trim(),
+        feeStatus: _selectedFeeStatus,
+        feeAmount: _feeAmountController.text.trim().isEmpty ? '0.00' : _feeAmountController.text.trim(),
+        paidAmount: _paidAmountController.text.trim().isEmpty ? '0.00' : _paidAmountController.text.trim(),
+        checkBox: _checkBox,
+        schoolType: _selectedSchoolForm,
+      );
+
+      final updated = await _repository.updateStudent(
+        id: _selectedStudent!.id!,
+        student: student,
+        studentProfile: _imageFile,
+        studentProfileBytes: _imageBytes,
+      );
+
+      final index = _students.indexWhere((s) => s.id == _selectedStudent!.id);
+      if (index != -1) {
+        setState(() {
+          _students[index] = updated;
+          _selectedStudent = updated;
+          _isEditing = false;
+          _resetForm();
+        });
+      }
+
+      _showSnackbar('Student updated successfully!', Colors.blue);
+    } catch (e) {
+      _showSnackbar('Failed to update student: $e', Colors.red);
+    } finally {
+      setState(() => _isSubmitting = false);
+    }
+  }
+
+  Future<void> _deleteStudent(StudentModel student) async {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Student'),
+        content: Text('Are you sure you want to delete ${student.firstName} ${student.lastName}?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                final success = await _repository.deleteStudent(student.id!);
+                if (success) {
+                  setState(() {
+                    _students.removeWhere((s) => s.id == student.id);
+                    if (_selectedStudent?.id == student.id) {
+                      _showRightPanel = false;
+                      _selectedStudent = null;
+                    }
+                  });
+                  _showSnackbar('Student deleted successfully!', Colors.red);
+                }
+              } catch (e) {
+                _showSnackbar('Failed to delete student: $e', Colors.red);
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
       ),
-      StudentModel(
-        id: 'S002',
-        firstName: 'Priya',
-        middleName: '',
-        lastName: 'Patel',
-        dob: '22 Jun 2014',
-        gender: 'Female',
-        fatherName: 'Mukesh Patel',
-        motherName: 'Rekha Patel',
-        parentPhone: '+91 98765 43212',
-        alternativePhone: '+91 98765 43213',
-        studentClass: '6th',
-        rollNumber: '102',
-        admissionNumber: 'ADM2023002',
-        email: 'priya@student.com',
-        address: '45, Patel Nagar, Mumbai',
-        casteCategory: 'OBC',
-        adharNumber: '2345 6789 0123',
-        sssmid: 'SSM2023002',
-        feeStatus: 'Pending',
-        feeAmount: '5500',
-        paidAmount: '2000',
-        checkBox: true,
-        school: 'School A',
-        createdAt: 'Jan 2023',
-      ),
-      StudentModel(
-        id: 'S003',
-        firstName: 'Rohan',
-        middleName: 'Singh',
-        lastName: 'Verma',
-        dob: '10 Sep 2013',
-        gender: 'Male',
-        fatherName: 'Vikram Verma',
-        motherName: 'Neha Verma',
-        parentPhone: '+91 98765 43214',
-        alternativePhone: '+91 98765 43215',
-        studentClass: '7th',
-        rollNumber: '103',
-        admissionNumber: 'ADM2023003',
-        email: 'rohan@student.com',
-        address: '78, Verma Colony, Jaipur',
-        casteCategory: 'General',
-        adharNumber: '3456 7890 1234',
-        sssmid: 'SSM2023003',
-        feeStatus: 'Paid',
-        feeAmount: '6000',
-        paidAmount: '6000',
-        checkBox: true,
-        school: 'School A',
-        createdAt: 'Feb 2023',
-      ),
-      StudentModel(
-        id: 'S004',
-        firstName: 'Sneha',
-        middleName: '',
-        lastName: 'Reddy',
-        dob: '05 Dec 2015',
-        gender: 'Female',
-        fatherName: 'Suresh Reddy',
-        motherName: 'Lakshmi Reddy',
-        parentPhone: '+91 98765 43216',
-        alternativePhone: '',
-        studentClass: '4th',
-        rollNumber: '104',
-        admissionNumber: 'ADM2023004',
-        email: 'sneha@student.com',
-        address: '234, Reddy Nagar, Hyderabad',
-        casteCategory: 'SC',
-        adharNumber: '4567 8901 2345',
-        sssmid: 'SSM2023004',
-        feeStatus: 'Overdue',
-        feeAmount: '4500',
-        paidAmount: '1000',
-        checkBox: false,
-        school: 'School A',
-        createdAt: 'Mar 2023',
-      ),
-      StudentModel(
-        id: 'S005',
-        firstName: 'Arjun',
-        middleName: 'Kumar',
-        lastName: 'Nair',
-        dob: '18 Feb 2016',
-        gender: 'Male',
-        fatherName: 'Rajan Nair',
-        motherName: 'Sindhu Nair',
-        parentPhone: '+91 98765 43218',
-        alternativePhone: '+91 98765 43219',
-        studentClass: '3rd',
-        rollNumber: '105',
-        admissionNumber: 'ADM2023005',
-        email: 'arjun@student.com',
-        address: '567, Nair House, Kochi',
-        casteCategory: 'General',
-        adharNumber: '5678 9012 3456',
-        sssmid: 'SSM2023005',
-        feeStatus: 'Paid',
-        feeAmount: '4000',
-        paidAmount: '4000',
-        checkBox: true,
-        school: 'School A',
-        createdAt: 'Apr 2023',
-      ),
-      // ===== School B Students =====
-      StudentModel(
-        id: 'S006',
-        firstName: 'Kavya',
-        middleName: '',
-        lastName: 'Gupta',
-        dob: '12 Apr 2014',
-        gender: 'Female',
-        fatherName: 'Rahul Gupta',
-        motherName: 'Pooja Gupta',
-        parentPhone: '+91 98765 43220',
-        alternativePhone: '+91 98765 43221',
-        studentClass: '6th',
-        rollNumber: '201',
-        admissionNumber: 'ADM2023006',
-        email: 'kavya@student.com',
-        address: '890, Gupta Colony, Lucknow',
-        casteCategory: 'General',
-        adharNumber: '6789 0123 4567',
-        sssmid: 'SSM2023006',
-        feeStatus: 'Pending',
-        feeAmount: '5500',
-        paidAmount: '3000',
-        checkBox: true,
-        school: 'School B',
-        createdAt: 'Jan 2023',
-      ),
-      StudentModel(
-        id: 'S007',
-        firstName: 'Vikram',
-        middleName: 'Singh',
-        lastName: 'Rathore',
-        dob: '03 Jul 2015',
-        gender: 'Male',
-        fatherName: 'Thakur Rathore',
-        motherName: 'Rani Rathore',
-        parentPhone: '+91 98765 43222',
-        alternativePhone: '+91 98765 43223',
-        studentClass: '5th',
-        rollNumber: '202',
-        admissionNumber: 'ADM2023007',
-        email: 'vikram@student.com',
-        address: '123, Rathore Palace, Jodhpur',
-        casteCategory: 'OBC',
-        adharNumber: '7890 1234 5678',
-        sssmid: 'SSM2023007',
-        feeStatus: 'Paid',
-        feeAmount: '5000',
-        paidAmount: '5000',
-        checkBox: true,
-        school: 'School B',
-        createdAt: 'Feb 2023',
-      ),
-      StudentModel(
-        id: 'S008',
-        firstName: 'Ananya',
-        middleName: '',
-        lastName: 'Iyer',
-        dob: '28 Nov 2013',
-        gender: 'Female',
-        fatherName: 'Subramanian Iyer',
-        motherName: 'Lakshmi Iyer',
-        parentPhone: '+91 98765 43224',
-        alternativePhone: '+91 98765 43225',
-        studentClass: '7th',
-        rollNumber: '203',
-        admissionNumber: 'ADM2023008',
-        email: 'ananya@student.com',
-        address: '456, Iyer Street, Chennai',
-        casteCategory: 'General',
-        adharNumber: '8901 2345 6789',
-        sssmid: 'SSM2023008',
-        feeStatus: 'Overdue',
-        feeAmount: '6000',
-        paidAmount: '1500',
-        checkBox: false,
-        school: 'School B',
-        createdAt: 'Mar 2023',
-      ),
-      StudentModel(
-        id: 'S009',
-        firstName: 'Dhruv',
-        middleName: 'Kumar',
-        lastName: 'Mishra',
-        dob: '15 Jan 2016',
-        gender: 'Male',
-        fatherName: 'Ram Mishra',
-        motherName: 'Sita Mishra',
-        parentPhone: '+91 98765 43226',
-        alternativePhone: '',
-        studentClass: '4th',
-        rollNumber: '204',
-        admissionNumber: 'ADM2023009',
-        email: 'dhruv@student.com',
-        address: '789, Mishra Nagar, Patna',
-        casteCategory: 'SC',
-        adharNumber: '9012 3456 7890',
-        sssmid: 'SSM2023009',
-        feeStatus: 'Paid',
-        feeAmount: '4500',
-        paidAmount: '4500',
-        checkBox: true,
-        school: 'School B',
-        createdAt: 'Apr 2023',
-      ),
-      StudentModel(
-        id: 'S010',
-        firstName: 'Meera',
-        middleName: '',
-        lastName: 'Menon',
-        dob: '22 Aug 2015',
-        gender: 'Female',
-        fatherName: 'Gopal Menon',
-        motherName: 'Radha Menon',
-        parentPhone: '+91 98765 43228',
-        alternativePhone: '+91 98765 43229',
-        studentClass: '5th',
-        rollNumber: '205',
-        admissionNumber: 'ADM2023010',
-        email: 'meera@student.com',
-        address: '321, Menon House, Trivandrum',
-        casteCategory: 'General',
-        adharNumber: '0123 4567 8901',
-        sssmid: 'SSM2023010',
-        feeStatus: 'Pending',
-        feeAmount: '5000',
-        paidAmount: '2500',
-        checkBox: true,
-        school: 'School B',
-        createdAt: 'May 2023',
-      ),
-    ];
+    );
   }
 
   // ============ ATTENDANCE METHODS ============
@@ -572,14 +364,12 @@ class _StudentScreenState extends State<StudentScreen> {
   List<StudentModel> get _filteredStudents {
     var filtered = _students;
 
-    // School Filter
     if (_currentSchoolFilter == SchoolFilter.schoolA) {
-      filtered = filtered.where((student) => student.school == 'School A').toList();
+      filtered = filtered.where((student) => student.schoolType == 'School A').toList();
     } else if (_currentSchoolFilter == SchoolFilter.schoolB) {
-      filtered = filtered.where((student) => student.school == 'School B').toList();
+      filtered = filtered.where((student) => student.schoolType == 'School B').toList();
     }
 
-    // Class Filter
     if (_currentFilter != StudentFilter.all) {
       final classMap = {
         StudentFilter.classKG: 'KG',
@@ -604,18 +394,16 @@ class _StudentScreenState extends State<StudentScreen> {
       }
     }
 
-    // Search Filter
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
       filtered = filtered.where((student) =>
-      '${student.firstName} ${student.middleName} ${student.lastName}'.toLowerCase().contains(query) ||
-          student.id.toLowerCase().contains(query) ||
+      '${student.firstName} ${student.middleName} ${student.lastName}'
+          .toLowerCase()
+          .contains(query) ||
+          student.id?.toString().contains(query) == true ||
           student.rollNumber.toLowerCase().contains(query) ||
-          student.admissionNumber.toLowerCase().contains(query) ||
           student.studentClass.toLowerCase().contains(query) ||
-          student.email.toLowerCase().contains(query) ||
-          student.school.toLowerCase().contains(query)
-      ).toList();
+          student.schoolType?.toLowerCase().contains(query) == true).toList();
     }
 
     return filtered;
@@ -623,12 +411,14 @@ class _StudentScreenState extends State<StudentScreen> {
 
   int get _totalStudents => _students.length;
   int get _paidStudents => _students.where((s) => s.feeStatus == 'Paid').length;
-  int get _pendingStudents => _students.where((s) => s.feeStatus == 'Pending' || s.feeStatus == 'Overdue').length;
+  int get _pendingStudents =>
+      _students.where((s) => s.feeStatus == 'Pending' || s.feeStatus == 'Overdue').length;
 
   Map<String, int> get _schoolWiseStats {
     Map<String, int> stats = {};
     for (var student in _students) {
-      stats[student.school] = (stats[student.school] ?? 0) + 1;
+      final school = student.schoolType ?? 'Unknown';
+      stats[school] = (stats[school] ?? 0) + 1;
     }
     return stats;
   }
@@ -659,6 +449,7 @@ class _StudentScreenState extends State<StudentScreen> {
     _selectedSchoolForm = 'School A';
     _checkBox = true;
     _imageFile = null;
+    _imageBytes = null;
     _formKey.currentState?.reset();
   }
 
@@ -668,10 +459,10 @@ class _StudentScreenState extends State<StudentScreen> {
     _lastNameController.text = student.lastName;
     _dobController.text = student.dob;
     _rollNoController.text = student.rollNumber;
-    _admissionNoController.text = student.admissionNumber;
-    _emailController.text = student.email;
+    _admissionNoController.text = '';
+    _emailController.text = '';
     _phoneController.text = student.parentPhone;
-    _altPhoneController.text = student.alternativePhone;
+    _altPhoneController.text = student.alternativePhone ?? '';
     _addressController.text = student.address;
     _fatherNameController.text = student.fatherName;
     _motherNameController.text = student.motherName;
@@ -682,108 +473,79 @@ class _StudentScreenState extends State<StudentScreen> {
     _feeAmountController.text = student.feeAmount;
     _paidAmountController.text = student.paidAmount;
     _selectedGender = student.gender;
-    _selectedClass = student.studentClass;
+    _selectedClass = _validateClassValue(student.studentClass);
     _selectedFeeStatus = student.feeStatus;
-    _selectedSchoolForm = student.school;
+    _selectedSchoolForm = student.schoolType ?? 'School A';
     _checkBox = student.checkBox;
-    _imageFile = student.profileImage != null ? File(student.profileImage!) : null;
-  }
 
-  StudentModel _createStudentFromForm(String id) {
-    return StudentModel(
-      id: id,
-      firstName: _firstNameController.text.trim(),
-      middleName: _middleNameController.text.trim(),
-      lastName: _lastNameController.text.trim(),
-      dob: _dobController.text.trim(),
-      gender: _selectedGender,
-      fatherName: _fatherNameController.text.trim(),
-      motherName: _motherNameController.text.trim(),
-      parentPhone: _parentPhoneController.text.trim(),
-      alternativePhone: _altPhoneController.text.trim(),
-      studentClass: _selectedClass,
-      rollNumber: _rollNoController.text.trim(),
-      admissionNumber: _admissionNoController.text.trim(),
-      email: _emailController.text.trim(),
-      address: _addressController.text.trim(),
-      casteCategory: _casteCategoryController.text.trim(),
-      adharNumber: _adharNumberController.text.trim(),
-      sssmid: _sssmidController.text.trim(),
-      feeStatus: _selectedFeeStatus,
-      feeAmount: _feeAmountController.text.trim().isEmpty ? '0.00' : _feeAmountController.text.trim(),
-      paidAmount: _paidAmountController.text.trim().isEmpty ? '0.00' : _paidAmountController.text.trim(),
-      checkBox: _checkBox,
-      profileImage: _imageFile?.path,
-      school: _selectedSchoolForm,
-      createdAt: DateFormat('MMM yyyy').format(DateTime.now()),
-    );
-  }
-
-  // ============ CRUD OPERATIONS ============
-  void _addStudent() {
-    if (!_formKey.currentState!.validate()) return;
-
-    final newStudent = _createStudentFromForm(
-        'S${(_students.length + 1).toString().padLeft(3, '0')}'
-    );
-
-    setState(() {
-      _students.add(newStudent);
-      _showRightPanel = false;
-      _isAddingNew = false;
-      _resetForm();
-    });
-
-    _showSnackbar('Student added successfully!', Colors.green);
-  }
-
-  void _updateStudent() {
-    if (!_formKey.currentState!.validate()) return;
-
-    final updatedStudent = _createStudentFromForm(_selectedStudent!.id);
-    final index = _students.indexWhere((s) => s.id == _selectedStudent!.id);
-
-    if (index != -1) {
-      setState(() {
-        _students[index] = updatedStudent;
-        _selectedStudent = updatedStudent;
-        _isEditing = false;
-        _resetForm();
-      });
-      _showSnackbar('Student updated successfully!', Colors.blue);
+    if (kIsWeb) {
+      _imageFile = null;
+      _imageBytes = null;
+    } else {
+      _imageFile = student.studentProfile != null ? File(student.studentProfile!) : null;
     }
   }
 
-  void _deleteStudent(StudentModel student) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Student'),
-        content: Text('Are you sure you want to delete ${student.firstName} ${student.lastName}?'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _students.removeWhere((s) => s.id == student.id);
-                if (_selectedStudent?.id == student.id) {
-                  _showRightPanel = false;
-                  _selectedStudent = null;
-                }
-              });
-              _showSnackbar('Student deleted successfully!', Colors.red);
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
+  String _validateClassValue(String value) {
+    if (_classList.contains(value)) {
+      return value;
+    }
+    if (value == '12' && _classList.contains('12th')) return '12th';
+    if (value == '12th' && _classList.contains('12')) return '12';
+    if (value == '1' && _classList.contains('1st')) return '1st';
+    if (value == '2' && _classList.contains('2nd')) return '2nd';
+    if (value == '3' && _classList.contains('3rd')) return '3rd';
+    if (value == '4' && _classList.contains('4th')) return '4th';
+    if (value == '5' && _classList.contains('5th')) return '5th';
+    if (value == '6' && _classList.contains('6th')) return '6th';
+    if (value == '7' && _classList.contains('7th')) return '7th';
+    if (value == '8' && _classList.contains('8th')) return '8th';
+    if (value == '9' && _classList.contains('9th')) return '9th';
+    if (value == '10' && _classList.contains('10th')) return '10th';
+    if (value == '11' && _classList.contains('11th')) return '11th';
+    return _classList.first;
+  }
+
+  // ============ IMAGE PICKER ============
+  Future<void> _pickImage() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+        withData: true,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        if (file.size > 5 * 1024 * 1024) {
+          _showSnackbar('Image size too large. Please select an image under 5MB.', Colors.orange);
+          return;
+        }
+
+        if (_isWeb) {
+          if (file.bytes != null) {
+            setState(() {
+              _imageBytes = file.bytes;
+            });
+            // _showSnackbar('Image uploaded successfully!', Colors.green);
+          } else {
+            _showSnackbar('Failed to load image bytes', Colors.red);
+          }
+        } else {
+          String? filePath = file.path;
+          if (filePath != null) {
+            setState(() {
+              _imageFile = File(filePath);
+            });
+            _showSnackbar('Image uploaded successfully!', Colors.green);
+          } else {
+            _showSnackbar('Failed to get image file path', Colors.red);
+          }
+        }
+      }
+    } catch (e) {
+      _showSnackbar('Error picking image: ${e.toString()}', Colors.red);
+    }
   }
 
   void _showSnackbar(String message, Color color) {
@@ -798,35 +560,28 @@ class _StudentScreenState extends State<StudentScreen> {
     );
   }
 
-  // ============ IMAGE PICKER ============
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 500,
-      maxHeight: 500,
-      imageQuality: 80,
-    );
-    if (pickedFile != null) {
-      setState(() => _imageFile = File(pickedFile.path));
-    }
-  }
-
   // ============ HELPERS ============
   Color _getFeeStatusColor(String status) {
     switch (status) {
-      case 'Paid': return Colors.green;
-      case 'Pending': return Colors.orange;
-      case 'Overdue': return Colors.red;
-      default: return Colors.grey;
+      case 'Paid':
+        return Colors.green;
+      case 'Pending':
+        return Colors.orange;
+      case 'Overdue':
+        return Colors.red;
+      default:
+        return Colors.grey;
     }
   }
 
   Color _getSchoolColor(String school) {
     switch (school) {
-      case 'School A': return Colors.blue;
-      case 'School B': return Colors.green;
-      default: return Colors.grey;
+      case 'School A':
+        return Colors.blue;
+      case 'School B':
+        return Colors.green;
+      default:
+        return Colors.grey;
     }
   }
 
@@ -837,10 +592,174 @@ class _StudentScreenState extends State<StudentScreen> {
 
   Color _getGenderColor(String gender) {
     switch (gender) {
-      case 'Male': return Colors.blue;
-      case 'Female': return Colors.pink;
-      default: return Colors.purple;
+      case 'Male':
+        return Colors.blue;
+      case 'Female':
+        return Colors.pink;
+      default:
+        return Colors.purple;
     }
+  }
+
+  String _formatDate(String dateString) {
+    if (dateString.isEmpty) return 'N/A';
+    try {
+      final date = DateTime.parse(dateString);
+      return DateFormat('dd MMM yyyy, hh:mm a').format(date);
+    } catch (e) {
+      return dateString;
+    }
+  }
+
+  // ============ SHIMMER LOADING WIDGETS ============
+  Widget _buildShimmerCard() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey[200]!, width: 1),
+      ),
+      child: Row(
+        children: [
+          Shimmer.fromColors(
+            baseColor: Colors.grey[300]!,
+            highlightColor: Colors.grey[100]!,
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Shimmer.fromColors(
+                  baseColor: Colors.grey[300]!,
+                  highlightColor: Colors.grey[100]!,
+                  child: Container(
+                    height: 14,
+                    width: double.infinity,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Shimmer.fromColors(
+                  baseColor: Colors.grey[300]!,
+                  highlightColor: Colors.grey[100]!,
+                  child: Container(
+                    height: 10,
+                    width: 100,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Row(
+            children: [
+              Shimmer.fromColors(
+                baseColor: Colors.grey[300]!,
+                highlightColor: Colors.grey[100]!,
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Shimmer.fromColors(
+                baseColor: Colors.grey[300]!,
+                highlightColor: Colors.grey[100]!,
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Shimmer.fromColors(
+                baseColor: Colors.grey[300]!,
+                highlightColor: Colors.grey[100]!,
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShimmerList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(12),
+      itemCount: 6,
+      itemBuilder: (context, index) => _buildShimmerCard(),
+    );
+  }
+
+  Widget _buildShimmerRightPanel() {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Shimmer.fromColors(
+              baseColor: Colors.grey[300]!,
+              highlightColor: Colors.grey[100]!,
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Shimmer.fromColors(
+              baseColor: Colors.grey[300]!,
+              highlightColor: Colors.grey[100]!,
+              child: Container(
+                height: 20,
+                width: 200,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Shimmer.fromColors(
+              baseColor: Colors.grey[300]!,
+              highlightColor: Colors.grey[100]!,
+              child: Container(
+                height: 14,
+                width: 150,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // ============ BUILD ============
@@ -877,7 +796,9 @@ class _StudentScreenState extends State<StudentScreen> {
                   _buildHeader(schoolLabel, schoolStats),
                   _buildFilterSearchBar(),
                   Expanded(
-                    child: _filteredStudents.isEmpty
+                    child: _isLoading
+                        ? _buildShimmerList()
+                        : _filteredStudents.isEmpty
                         ? _buildEmptyState()
                         : ListView.builder(
                       padding: const EdgeInsets.all(12),
@@ -907,7 +828,9 @@ class _StudentScreenState extends State<StudentScreen> {
                   ),
                 ),
               ),
-              child: _showRightPanel
+              child: _isLoading
+                  ? _buildShimmerRightPanel()
+                  : _showRightPanel
                   ? (_isAddingNew
                   ? _buildAddPanel()
                   : _isEditing
@@ -991,7 +914,9 @@ class _StudentScreenState extends State<StudentScreen> {
             ),
             const SizedBox(height: 32),
             ElevatedButton.icon(
-              onPressed: () {
+              onPressed: _isSubmitting
+                  ? null
+                  : () {
                 _resetForm();
                 setState(() {
                   _isAddingNew = true;
@@ -1139,7 +1064,6 @@ class _StudentScreenState extends State<StudentScreen> {
           ),
           Row(
             children: [
-              // School Filter Dropdown
               Container(
                 height: 36,
                 padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -1198,7 +1122,9 @@ class _StudentScreenState extends State<StudentScreen> {
               const SizedBox(width: 8),
               if (!_showRightPanel || !_isAddingNew)
                 ElevatedButton.icon(
-                  onPressed: () {
+                  onPressed: _isSubmitting
+                      ? null
+                      : () {
                     _resetForm();
                     setState(() {
                       _isAddingNew = true;
@@ -1320,7 +1246,7 @@ class _StudentScreenState extends State<StudentScreen> {
   // ============ STUDENT CARD ============
   Widget _buildStudentCard(StudentModel student) {
     final isSelected = _selectedStudent?.id == student.id;
-    final schoolColor = _getSchoolColor(student.school);
+    final schoolColor = _getSchoolColor(student.schoolType ?? 'School A');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -1335,7 +1261,6 @@ class _StudentScreenState extends State<StudentScreen> {
       ),
       child: Row(
         children: [
-          // Avatar
           Container(
             width: 40,
             height: 40,
@@ -1343,20 +1268,22 @@ class _StudentScreenState extends State<StudentScreen> {
               color: _getGenderColor(student.gender).withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Center(
-              child: Text(
-                _getInitials(student.firstName, student.lastName),
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: _getGenderColor(student.gender),
-                ),
+            child: student.studentProfile != null && student.studentProfile!.isNotEmpty
+                ? ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                student.studentProfile!,
+                fit: BoxFit.cover,
+                width: 40,
+                height: 40,
+                errorBuilder: (context, error, stackTrace) {
+                  return _buildInitialsAvatar(40, student.firstName, student.lastName, student.gender);
+                },
               ),
-            ),
+            )
+                : _buildInitialsAvatar(40, student.firstName, student.lastName, student.gender),
           ),
           const SizedBox(width: 12),
-
-          // Content
           Expanded(
             child: InkWell(
               onTap: () {
@@ -1407,18 +1334,15 @@ class _StudentScreenState extends State<StudentScreen> {
                     spacing: 8,
                     runSpacing: 2,
                     children: [
-                      _buildInfoText(Icons.school, student.school, color: schoolColor),
+                      _buildInfoText(Icons.school, student.schoolType ?? 'N/A', color: schoolColor),
                       _buildInfoText(Icons.class_, student.studentClass),
                       _buildInfoText(Icons.numbers, 'Roll ${student.rollNumber}'),
-                      _buildInfoText(Icons.badge, student.admissionNumber),
                     ],
                   ),
                 ],
               ),
             ),
           ),
-
-          // Action Buttons
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1479,7 +1403,7 @@ class _StudentScreenState extends State<StudentScreen> {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: IconButton(
-                  onPressed: () => _deleteStudent(student),
+                  onPressed: _isSubmitting ? null : () => _deleteStudent(student),
                   icon: Icon(
                     Icons.delete_outline,
                     size: 18,
@@ -1492,6 +1416,30 @@ class _StudentScreenState extends State<StudentScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildInitialsAvatar(double size, String firstName, String lastName, String gender) {
+    final initials = _getInitials(firstName, lastName);
+    final color = _getGenderColor(gender);
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Center(
+        child: Text(
+          initials,
+          style: TextStyle(
+            fontSize: size * 0.4,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
       ),
     );
   }
@@ -1545,7 +1493,9 @@ class _StudentScreenState extends State<StudentScreen> {
           ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
-            onPressed: () {
+            onPressed: _isSubmitting
+                ? null
+                : () {
               _resetForm();
               setState(() {
                 _isAddingNew = true;
@@ -1577,14 +1527,13 @@ class _StudentScreenState extends State<StudentScreen> {
     if (_selectedStudent == null) return const SizedBox();
 
     final student = _selectedStudent!;
-    final schoolColor = _getSchoolColor(student.school);
+    final schoolColor = _getSchoolColor(student.schoolType ?? 'School A');
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             children: [
               Container(
@@ -1594,16 +1543,20 @@ class _StudentScreenState extends State<StudentScreen> {
                   color: _getGenderColor(student.gender).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Center(
-                  child: Text(
-                    _getInitials(student.firstName, student.lastName),
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: _getGenderColor(student.gender),
-                    ),
+                child: student.studentProfile != null && student.studentProfile!.isNotEmpty
+                    ? ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    student.studentProfile!,
+                    fit: BoxFit.cover,
+                    width: 50,
+                    height: 50,
+                    errorBuilder: (context, error, stackTrace) {
+                      return _buildInitialsAvatar(50, student.firstName, student.lastName, student.gender);
+                    },
                   ),
-                ),
+                )
+                    : _buildInitialsAvatar(50, student.firstName, student.lastName, student.gender),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1633,7 +1586,7 @@ class _StudentScreenState extends State<StudentScreen> {
                               Icon(Icons.school, size: 12, color: schoolColor),
                               const SizedBox(width: 4),
                               Text(
-                                student.school,
+                                student.schoolType ?? 'N/A',
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
@@ -1667,7 +1620,7 @@ class _StudentScreenState extends State<StudentScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            student.id,
+                            'ID: ${student.id ?? ''}',
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w500,
@@ -1682,58 +1635,45 @@ class _StudentScreenState extends State<StudentScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 20),
           const Divider(),
           const SizedBox(height: 16),
-
-          // Personal Info
-          _buildDetailRow('📛 Name', '${student.firstName} ${student.middleName.isNotEmpty ? student.middleName + ' ' : ''}${student.lastName}'),
+          _buildDetailRow('📛 Name',
+              '${student.firstName} ${student.middleName.isNotEmpty ? student.middleName + ' ' : ''}${student.lastName}'),
           _buildDetailRow('🎂 DOB', student.dob),
           _buildDetailRow('⚧ Gender', student.gender),
-          _buildDetailRow('🏫 School', student.school, color: schoolColor, isBold: true),
-          _buildDetailRow('📧 Email', student.email),
+          _buildDetailRow('🏫 School', student.schoolType ?? 'N/A', color: schoolColor, isBold: true),
           _buildDetailRow('📱 Phone', student.parentPhone),
-          if (student.alternativePhone.isNotEmpty)
-            _buildDetailRow('📱 Alt Phone', student.alternativePhone),
+          if (student.alternativePhone?.isNotEmpty == true)
+            _buildDetailRow('📱 Alt Phone', student.alternativePhone!),
           _buildDetailRow('📍 Address', student.address),
-
           const SizedBox(height: 12),
           const Divider(),
           const SizedBox(height: 12),
-
-          // Parent Info
           _buildDetailRow('👨 Father', student.fatherName),
           _buildDetailRow('👩 Mother', student.motherName),
           _buildDetailRow('📱 Parent Phone', student.parentPhone),
-
           const SizedBox(height: 12),
           const Divider(),
           const SizedBox(height: 12),
-
-          // Academic Info
           _buildDetailRow('📚 Class', student.studentClass),
           _buildDetailRow('🔢 Roll No', student.rollNumber),
-          _buildDetailRow('🎫 Admission No', student.admissionNumber),
           _buildDetailRow('📋 Caste', student.casteCategory.isNotEmpty ? student.casteCategory : 'N/A'),
           _buildDetailRow('🪪 Aadhar', student.adharNumber.isNotEmpty ? student.adharNumber : 'N/A'),
           _buildDetailRow('🔑 SSSMID', student.sssmid.isNotEmpty ? student.sssmid : 'N/A'),
-          _buildDetailRow('📅 Created', student.createdAt),
-
+          _buildDetailRow('🆔 ID', student.id?.toString() ?? 'N/A'),
+          _buildDetailRow('📅 Created', _formatDate(student.createdAt!)),
+          _buildDetailRow('📅 Updated', _formatDate(student.updatedAt!)),
           const SizedBox(height: 12),
           const Divider(),
           const SizedBox(height: 12),
-
-          // Fee Info
           _buildDetailRow('💰 Fee Amount', '₹${student.feeAmount}'),
           _buildDetailRow('💵 Paid Amount', '₹${student.paidAmount}'),
-          _buildDetailRow('📊 Fee Status', student.feeStatus, color: _getFeeStatusColor(student.feeStatus), isBold: true),
+          _buildDetailRow('📊 Fee Status', student.feeStatus,
+              color: _getFeeStatusColor(student.feeStatus), isBold: true),
           _buildDetailRow('📌 Status', student.checkBox ? 'Active ✅' : 'Inactive ❌',
               color: student.checkBox ? Colors.green : Colors.red, isBold: true),
-
           const SizedBox(height: 20),
-
-          // Action Buttons
           Row(
             children: [
               Expanded(
@@ -1757,7 +1697,9 @@ class _StudentScreenState extends State<StudentScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {
+                  onPressed: _isSubmitting
+                      ? null
+                      : () {
                     _loadStudentToForm(student);
                     setState(() {
                       _isEditing = true;
@@ -1781,7 +1723,7 @@ class _StudentScreenState extends State<StudentScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () => _deleteStudent(student),
+                  onPressed: _isSubmitting ? null : () => _deleteStudent(student),
                   icon: const Icon(Icons.delete, size: 18),
                   label: const Text('Delete'),
                   style: ElevatedButton.styleFrom(
@@ -1871,8 +1813,6 @@ class _StudentScreenState extends State<StudentScreen> {
             ],
           ),
           const SizedBox(height: 16),
-
-          // Stats
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -1971,10 +1911,7 @@ class _StudentScreenState extends State<StudentScreen> {
               ],
             ),
           ),
-
           const SizedBox(height: 16),
-
-          // Calendar
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -1989,7 +1926,8 @@ class _StudentScreenState extends State<StudentScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      DateFormat('MMMM yyyy').format(DateTime(_selectedYear, _selectedMonthIndex + 1)),
+                      DateFormat('MMMM yyyy').format(
+                          DateTime(_selectedYear, _selectedMonthIndex + 1)),
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -2115,9 +2053,7 @@ class _StudentScreenState extends State<StudentScreen> {
                   ? Colors.orange.withOpacity(0.7)
                   : Colors.grey[50],
               borderRadius: BorderRadius.circular(6),
-              border: isToday
-                  ? Border.all(color: Colors.blue, width: 2)
-                  : null,
+              border: isToday ? Border.all(color: Colors.blue, width: 2) : null,
             ),
             child: Center(
               child: Column(
@@ -2127,9 +2063,7 @@ class _StudentScreenState extends State<StudentScreen> {
                     day.toString(),
                     style: TextStyle(
                       fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                      color: isWeekend || status != null
-                          ? Colors.white
-                          : Colors.black87,
+                      color: isWeekend || status != null ? Colors.white : Colors.black87,
                       fontSize: 12,
                     ),
                   ),
@@ -2234,7 +2168,9 @@ class _StudentScreenState extends State<StudentScreen> {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () {
+                  onPressed: _isSubmitting
+                      ? null
+                      : () {
                     setState(() {
                       _showRightPanel = false;
                       _isAddingNew = false;
@@ -2254,7 +2190,7 @@ class _StudentScreenState extends State<StudentScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: _addStudent,
+                  onPressed: _isSubmitting ? null : _createStudent,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue[700],
                     foregroundColor: Colors.white,
@@ -2264,7 +2200,16 @@ class _StudentScreenState extends State<StudentScreen> {
                     ),
                     elevation: 0,
                   ),
-                  child: const Text(
+                  child: _isSubmitting
+                      ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                      : const Text(
                     'Add Student',
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
@@ -2304,7 +2249,9 @@ class _StudentScreenState extends State<StudentScreen> {
               ),
               const Spacer(),
               IconButton(
-                onPressed: () {
+                onPressed: _isSubmitting
+                    ? null
+                    : () {
                   setState(() {
                     _isEditing = false;
                   });
@@ -2322,7 +2269,9 @@ class _StudentScreenState extends State<StudentScreen> {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () {
+                  onPressed: _isSubmitting
+                      ? null
+                      : () {
                     setState(() {
                       _isEditing = false;
                     });
@@ -2340,7 +2289,7 @@ class _StudentScreenState extends State<StudentScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: _updateStudent,
+                  onPressed: _isSubmitting ? null : _updateStudent,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue[700],
                     foregroundColor: Colors.white,
@@ -2350,7 +2299,16 @@ class _StudentScreenState extends State<StudentScreen> {
                     ),
                     elevation: 0,
                   ),
-                  child: const Text(
+                  child: _isSubmitting
+                      ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                      : const Text(
                     'Update',
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
@@ -2365,305 +2323,292 @@ class _StudentScreenState extends State<StudentScreen> {
 
   // ============ FORM FIELDS ============
   Widget _buildFormFields({required bool isAdding}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Photo Upload
-        Align(
-          alignment: Alignment.center,
-          child: _buildPhotoUpload(),
-        ),
-        const SizedBox(height: 16),
-
-        // School Selection
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.blue[50],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.blue[200]!),
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Align(
+            alignment: Alignment.center,
+            child: _buildPhotoUpload(),
           ),
-          child: Row(
-            children: [
-              Icon(Icons.school, color: Colors.blue[700], size: 16),
-              const SizedBox(width: 8),
-              Text(
-                'School Information',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.blue[700],
+          const SizedBox(height: 16),
+
+          // School Selection
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue[200]!),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.school, color: Colors.blue[700], size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  'School Information',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.blue[700],
+                  ),
                 ),
+                const Spacer(),
+                SizedBox(
+                  width: 140,
+                  child: _buildDropdownField('', _schoolList, _selectedSchoolForm, (value) {
+                    setState(() => _selectedSchoolForm = value!);
+                  }, isCompact: true),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Personal Information
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.purple[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.purple[200]!),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.person, color: Colors.purple[700], size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  'Personal Information',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.purple[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildFormTextField(_firstNameController, 'First Name', Icons.person_outline,
+                    required: true),
               ),
-              const Spacer(),
-              SizedBox(
-                width: 140,
-                child: _buildDropdownField('', _schoolList, _selectedSchoolForm, (value) {
-                  setState(() => _selectedSchoolForm = value!);
-                }, isCompact: true),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildFormTextField(_middleNameController, 'Middle Name', Icons.person_outline),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildFormTextField(_lastNameController, 'Last Name', Icons.person_outline,
+                    required: true),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 12),
-
-        // Personal Information
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.purple[50],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.purple[200]!),
-          ),
-          child: Row(
+          const SizedBox(height: 8),
+          Row(
             children: [
-              Icon(Icons.person, color: Colors.purple[700], size: 16),
+              Expanded(
+                child: _buildFormTextField(_dobController, 'Date of Birth', Icons.calendar_today,
+                    hint: 'DD MMM YYYY', required: true),
+              ),
               const SizedBox(width: 8),
-              Text(
-                'Personal Information',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.purple[700],
+              Expanded(
+                child: _buildDropdownField('Gender', _genderList, _selectedGender, (value) {
+                  setState(() => _selectedGender = value!);
+                }),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Parent Information
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.green[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.green[200]!),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.family_restroom, color: Colors.green[700], size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  'Parent Information',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.green[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildFormTextField(_fatherNameController, 'Father Name', Icons.person,
+                    required: true),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildFormTextField(_motherNameController, 'Mother Name', Icons.person,
+                    required: true),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _buildFormTextField(_parentPhoneController, 'Parent Phone', Icons.phone, required: true),
+          const SizedBox(height: 12),
+
+          // Academic Information
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.orange[200]!),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.school, color: Colors.orange[700], size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  'Academic Information',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.orange[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildDropdownField('Class', _classList, _selectedClass, (value) {
+                  setState(() => _selectedClass = value!);
+                }),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildFormTextField(_rollNoController, 'Roll No', Icons.numbers,
+                    required: true),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Contact & Additional Information
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.teal[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.teal[200]!),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.contact_mail, color: Colors.teal[700], size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  'Contact & Additional Information',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.teal[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildFormTextField(_casteCategoryController, 'Caste Category', Icons.category),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildFormTextField(_adharNumberController, 'Aadhar Number', Icons.card_membership),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _buildFormTextField(_sssmidController, 'SSSMID', Icons.numbers),
+          const SizedBox(height: 12),
+
+          // Address
+          _buildFormTextField(_addressController, 'Address', Icons.location_on,
+              maxLines: 2, required: true),
+          const SizedBox(height: 12),
+
+          // Fee & Status Information
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.red[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.red[200]!),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.payment, color: Colors.red[700], size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  'Fee & Status Information',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.red[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildFormTextField(_feeAmountController, 'Fee Amount', Icons.money),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildFormTextField(_paidAmountController, 'Paid Amount', Icons.payment),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildDropdownField('Fee Status', _feeStatusList, _selectedFeeStatus, (value) {
+                  setState(() => _selectedFeeStatus = value!);
+                }),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Material(
+                  color: Colors.transparent,
+                  child: SwitchListTile(
+                    title: const Text('Active'),
+                    value: _checkBox,
+                    onChanged: _isSubmitting ? null : (v) => setState(() => _checkBox = v),
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                  ),
                 ),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: _buildFormTextField(_firstNameController, 'First Name', Icons.person_outline,
-                  required: true),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildFormTextField(_middleNameController, 'Middle Name', Icons.person_outline),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildFormTextField(_lastNameController, 'Last Name', Icons.person_outline,
-                  required: true),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: _buildFormTextField(_dobController, 'Date of Birth', Icons.calendar_today,
-                  hint: 'DD MMM YYYY', required: true),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildDropdownField('Gender', _genderList, _selectedGender, (value) {
-                setState(() => _selectedGender = value!);
-              }),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-
-        // Parent Information
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.green[50],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.green[200]!),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.family_restroom, color: Colors.green[700], size: 16),
-              const SizedBox(width: 8),
-              Text(
-                'Parent Information',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.green[700],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: _buildFormTextField(_fatherNameController, 'Father Name', Icons.person,
-                  required: true),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildFormTextField(_motherNameController, 'Mother Name', Icons.person,
-                  required: true),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        _buildFormTextField(_parentPhoneController, 'Parent Phone', Icons.phone,
-            required: true),
-        const SizedBox(height: 12),
-
-        // Academic Information
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.orange[50],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.orange[200]!),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.school, color: Colors.orange[700], size: 16),
-              const SizedBox(width: 8),
-              Text(
-                'Academic Information',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.orange[700],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: _buildDropdownField('Class', _classList, _selectedClass, (value) {
-                setState(() => _selectedClass = value!);
-              }),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildFormTextField(_rollNoController, 'Roll No', Icons.numbers,
-                  required: true),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        _buildFormTextField(_admissionNoController, 'Admission No', Icons.badge,
-            required: true),
-        const SizedBox(height: 12),
-
-        // Contact & Additional Information
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.teal[50],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.teal[200]!),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.contact_mail, color: Colors.teal[700], size: 16),
-              const SizedBox(width: 8),
-              Text(
-                'Contact & Additional Information',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.teal[700],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        _buildFormTextField(_emailController, 'Email', Icons.email,
-            required: true),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: _buildFormTextField(_phoneController, 'Primary Phone', Icons.phone,
-                  required: true),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildFormTextField(_altPhoneController, 'Alt Phone', Icons.phone_android),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        _buildFormTextField(_addressController, 'Address', Icons.location_on,
-            maxLines: 2, required: true),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: _buildFormTextField(_casteCategoryController, 'Caste Category', Icons.category),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildFormTextField(_adharNumberController, 'Aadhar Number', Icons.card_membership),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        _buildFormTextField(_sssmidController, 'SSSMID', Icons.numbers),
-        const SizedBox(height: 12),
-
-        // Fee & Status Information
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.red[50],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.red[200]!),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.payment, color: Colors.red[700], size: 16),
-              const SizedBox(width: 8),
-              Text(
-                'Fee & Status Information',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.red[700],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: _buildFormTextField(_feeAmountController, 'Fee Amount', Icons.money),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildFormTextField(_paidAmountController, 'Paid Amount', Icons.payment),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: _buildDropdownField('Fee Status', _feeStatusList, _selectedFeeStatus, (value) {
-                setState(() => _selectedFeeStatus = value!);
-              }),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: SwitchListTile(
-                title: const Text('Active'),
-                value: _checkBox,
-                onChanged: (v) => setState(() => _checkBox = v),
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-              ),
-            ),
-          ],
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -2696,16 +2641,27 @@ class _StudentScreenState extends State<StudentScreen> {
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       ),
-      validator: required
-          ? (v) => v?.trim().isEmpty ?? true ? '$label is required' : null
-          : null,
+      validator: required ? (v) => v?.trim().isEmpty ?? true ? '$label is required' : null : null,
     );
   }
 
   Widget _buildDropdownField(String label, List<String> items, String value,
       Function(String?) onChanged, {bool isCompact = false}) {
+    String selectedValue = value;
+    if (!items.contains(selectedValue)) {
+      if (selectedValue == '12' && items.contains('12th')) {
+        selectedValue = '12th';
+      } else if (selectedValue == '12th' && items.contains('12')) {
+        selectedValue = '12';
+      } else if (selectedValue.endsWith('th') && items.contains(selectedValue.replaceAll('th', ''))) {
+        selectedValue = selectedValue.replaceAll('th', '');
+      } else if (items.isNotEmpty) {
+        selectedValue = items.first;
+      }
+    }
+
     return DropdownButtonFormField<String>(
-      value: value,
+      value: selectedValue,
       decoration: InputDecoration(
         labelText: label.isNotEmpty ? label : null,
         labelStyle: TextStyle(fontSize: 12, color: Colors.grey[600]),
@@ -2732,13 +2688,13 @@ class _StudentScreenState extends State<StudentScreen> {
           child: Text(item, style: TextStyle(fontSize: isCompact ? 12 : 13)),
         );
       }).toList(),
-      onChanged: onChanged,
+      onChanged: _isSubmitting ? null : onChanged,
     );
   }
 
   Widget _buildPhotoUpload() {
     return GestureDetector(
-      onTap: _pickImage,
+      onTap: _isSubmitting ? null : _pickImage,
       child: Container(
         height: 80,
         width: 80,
@@ -2751,7 +2707,15 @@ class _StudentScreenState extends State<StudentScreen> {
             style: BorderStyle.solid,
           ),
         ),
-        child: _imageFile != null
+        child: _imageBytes != null && _isWeb
+            ? ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.memory(
+            _imageBytes!,
+            fit: BoxFit.cover,
+          ),
+        )
+            : _imageFile != null && !_isWeb
             ? ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: Image.file(

@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
-import 'package:image_picker/image_picker.dart';
-import 'package:file_picker/file_picker.dart'; // Add this dependency
-
-// Add to pubspec.yaml:
-// file_picker: ^6.1.1
+import 'package:file_picker/file_picker.dart';
 
 // ============ ENUMS ============
 enum ScheduleType {
@@ -70,7 +66,7 @@ class ScheduleModel {
     required this.icon,
     this.attachment,
     this.bannerImage,
-    this.pdfFile, // New field
+    this.pdfFile,
     this.assignedClasses,
     this.assignedTeachers,
     this.eventType,
@@ -151,8 +147,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   List<String> _selectedTeachers = [];
   File? _bannerImage;
   String? _bannerImagePath;
-  File? _pdfFile; // New field for PDF
-  String? _pdfFilePath; // New field for PDF path
+  File? _pdfFile;
+  String? _pdfFilePath;
 
   final List<String> _classList = ['Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5'];
   final List<String> _teacherList = ['Mr. John', 'Ms. Sarah', 'Dr. Smith', 'Mrs. Brown'];
@@ -425,8 +421,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     _selectedTeachers = [];
     _bannerImage = null;
     _bannerImagePath = null;
-    _pdfFile = null; // Reset PDF
-    _pdfFilePath = null; // Reset PDF path
+    _pdfFile = null;
+    _pdfFilePath = null;
   }
 
   void _loadScheduleToForm(ScheduleModel schedule) {
@@ -443,7 +439,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     _selectedClasses = schedule.assignedClasses ?? [];
     _selectedTeachers = schedule.assignedTeachers ?? [];
     _bannerImagePath = schedule.bannerImage;
-    _pdfFilePath = schedule.pdfFile; // Load PDF path
+    _pdfFilePath = schedule.pdfFile;
 
     if (schedule.type == ScheduleType.event) {
       _eventTypeController.text = schedule.eventType ?? '';
@@ -477,7 +473,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       icon: _selectedIcon,
       school: _selectedSchoolForm,
       bannerImage: _bannerImagePath,
-      pdfFile: _pdfFilePath, // Save PDF path
+      pdfFile: _pdfFilePath,
       assignedClasses: _selectedType != ScheduleType.event ? _selectedClasses : null,
       assignedTeachers: _selectedTeachers.isNotEmpty ? _selectedTeachers : null,
       eventType: _selectedType == ScheduleType.event ? _eventTypeController.text : null,
@@ -495,20 +491,35 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
-  // ============ BANNER IMAGE PICKER ============
+  // ============ BANNER IMAGE PICKER USING FILE_PICKER ============
   Future<void> _pickBannerImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 800,
-      maxHeight: 400,
-      imageQuality: 80,
-    );
-    if (pickedFile != null) {
-      setState(() {
-        _bannerImage = File(pickedFile.path);
-        _bannerImagePath = pickedFile.path;
-      });
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+        withData: false,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        // Check if file size is reasonable (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          _showSnackbar('Image size too large. Please select an image under 5MB.', Colors.orange);
+          return;
+        }
+        String? filePath = file.path;
+        if (filePath != null) {
+          setState(() {
+            _bannerImage = File(filePath);
+            _bannerImagePath = filePath;
+          });
+          _showSnackbar('Banner image uploaded successfully!', Colors.green);
+        } else {
+          _showSnackbar('Failed to get image file path', Colors.red);
+        }
+      }
+    } catch (e) {
+      _showSnackbar('Error picking image: ${e.toString()}', Colors.red);
     }
   }
 
@@ -519,43 +530,36 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     });
   }
 
-  // ============ PDF PICKER ============
+  // ============ PDF PICKER USING FILE_PICKER ============
   Future<void> _pickPDF() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf'],
+        allowMultiple: false,
+        withData: false,
       );
 
-      if (result != null) {
-        PlatformFile file = result.files.first;
-        setState(() {
-          _pdfFile = File(file.path!);
-          _pdfFilePath = file.path;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('PDF selected: ${file.name}'),
-            backgroundColor: Colors.green[600],
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        );
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        // Check if file size is reasonable (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          _showSnackbar('PDF size too large. Please select a PDF under 10MB.', Colors.orange);
+          return;
+        }
+        String? filePath = file.path;
+        if (filePath != null) {
+          setState(() {
+            _pdfFile = File(filePath);
+            _pdfFilePath = filePath;
+          });
+          _showSnackbar('PDF uploaded: ${file.name}', Colors.green);
+        } else {
+          _showSnackbar('Failed to get PDF file path', Colors.red);
+        }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error selecting PDF: $e'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-      );
+      _showSnackbar('Error selecting PDF: ${e.toString()}', Colors.red);
     }
   }
 
@@ -564,6 +568,20 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       _pdfFile = null;
       _pdfFilePath = null;
     });
+  }
+
+  // ============ SNACKBAR HELPER ============
+  void _showSnackbar(String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    );
   }
 
   @override
@@ -844,7 +862,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           ),
           Row(
             children: [
-              // School Filter Dropdown - SINGLE FILTER
+              // School Filter Dropdown
               Container(
                 height: 36,
                 padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -1405,6 +1423,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           if (schedule.assignedTeachers != null)
             _buildAssignedList('👨‍🏫 Assigned Teachers', schedule.assignedTeachers!),
 
+
+
           const SizedBox(height: 20),
 
           Row(
@@ -1526,13 +1546,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             ),
             IconButton(
               onPressed: () {
-                // You can implement PDF viewer here
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('PDF viewer will open here'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
+                _showSnackbar('PDF viewer will open here', Colors.blue);
               },
               icon: Icon(Icons.visibility, color: Colors.red[700], size: 20),
             ),
@@ -1778,13 +1792,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 child: ElevatedButton(
                   onPressed: () {
                     if (_titleController.text.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Please enter a title'),
-                          backgroundColor: Colors.red,
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
+                      _showSnackbar('Please enter a title', Colors.red);
                       return;
                     }
 
@@ -1797,16 +1805,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       _isAddingNew = false;
                     });
 
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Schedule added successfully!'),
-                        backgroundColor: Colors.green[600],
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    );
+                    _showSnackbar('Schedule added successfully!', Colors.green);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue[700],
@@ -1895,13 +1894,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 child: ElevatedButton(
                   onPressed: () {
                     if (_titleController.text.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Please enter a title'),
-                          backgroundColor: Colors.red,
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
+                      _showSnackbar('Please enter a title', Colors.red);
                       return;
                     }
 
@@ -1919,16 +1912,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       _isEditing = false;
                     });
 
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Schedule updated successfully!'),
-                        backgroundColor: Colors.green[600],
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    );
+                    _showSnackbar('Schedule updated successfully!', Colors.green);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue[700],
@@ -2084,12 +2068,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             Expanded(
               child: _buildDatePicker('End Date', _endDate, (date) {
                 if (date.isBefore(_startDate)) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('End date must be after start date'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
+                  _showSnackbar('End date must be after start date', Colors.red);
                   return;
                 }
                 setState(() {
@@ -2333,7 +2312,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Recommended: 800 x 400 pixels, JPG/PNG format',
+          'Recommended: 800 x 400 pixels, JPG/PNG format (Max 5MB)',
           style: TextStyle(
             fontSize: 10,
             color: Colors.grey[500],
@@ -2480,7 +2459,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Upload PDF files only (max size: 10MB)',
+          'Upload PDF files only (Max 10MB)',
           style: TextStyle(
             fontSize: 10,
             color: Colors.grey[500],
@@ -2776,16 +2755,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 }
               });
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Schedule deleted successfully!'),
-                  backgroundColor: Colors.green[600],
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              );
+              _showSnackbar('Schedule deleted successfully!', Colors.green);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red[600],

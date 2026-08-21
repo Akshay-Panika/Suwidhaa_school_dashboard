@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
-import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:file_picker/file_picker.dart';
 
 // ============ ENUMS ============
 enum TeacherFilter {
@@ -643,17 +643,35 @@ class _TeachersScreenState extends State<TeachersScreen> {
     );
   }
 
-  // ============ IMAGE PICKER ============
+  // ============ IMAGE PICKER USING FILE_PICKER ============
   Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 500,
-      maxHeight: 500,
-      imageQuality: 80,
-    );
-    if (pickedFile != null) {
-      setState(() => _imageFile = File(pickedFile.path));
+    try {
+      // Pick image file using file_picker
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+        withData: false, // Don't read file data to memory for large files
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        // Check if file size is reasonable (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          _showSnackbar('Image size too large. Please select an image under 5MB.', Colors.orange);
+          return;
+        }
+        // Get the file path
+        String? filePath = file.path;
+        if (filePath != null) {
+          setState(() {
+            _imageFile = File(filePath);
+          });
+        } else {
+          _showSnackbar('Failed to get image file path', Colors.red);
+        }
+      }
+    } catch (e) {
+      _showSnackbar('Error picking image: ${e.toString()}', Colors.red);
     }
   }
 
