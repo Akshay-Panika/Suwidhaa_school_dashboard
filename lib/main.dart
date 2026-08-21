@@ -1,9 +1,9 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
-import 'package:get/get_navigation/src/root/get_material_app.dart';
-
+import 'package:get/get.dart';
 import 'feature/auth/screen/splash_screen.dart';
-import 'feature/student/binding/student_binding.dart';
-
+import 'feature/student/controller/student_controller.dart';
+import 'feature/teachers/controller/teacher_controller.dart';
 
 void main() {
   runApp(const MyApp());
@@ -16,9 +16,24 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
-      initialBinding: StudentBinding(),
-      home: SplashScreen(),
+      title: 'School Management',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        useMaterial3: true,
+      ),
+      initialBinding: AppBindings(),
+      home: const SplashScreen(),
     );
   }
 }
 
+class AppBindings implements Bindings {
+  @override
+  void dependencies() {
+    // Register all controllers
+    Get.put<TeacherController>(TeacherController(), permanent: true);
+    Get.put<StudentController>(StudentController(), permanent: true);
+    // Get.put<ClassController>(ClassController(), permanent: true);
+    // Get.put<SubjectController>(SubjectController(), permanent: true);
+  }
+}
