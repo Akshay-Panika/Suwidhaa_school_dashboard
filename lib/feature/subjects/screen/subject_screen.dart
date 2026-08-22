@@ -3,6 +3,11 @@ import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:get/get.dart';
+import 'package:shimmer/shimmer.dart';
+import '../../../core/widget/flutter_toast.dart';
+import '../controller/subject_controller.dart';
+import '../model/subject_model.dart';
 
 // ============ ENUMS ============
 enum SubjectFilter {
@@ -30,99 +35,42 @@ enum SchoolFilter {
   schoolB,
 }
 
-// ============ MODEL ============
-class ClassAssignment {
-  final String classLevel;
-  final String section;
-  final String timeSlot;
-  final String room;
-  final String teacher;
-
-  ClassAssignment({
-    required this.classLevel,
-    required this.section,
-    required this.timeSlot,
-    required this.room,
-    required this.teacher,
-  });
-
-  Map<String, dynamic> toJson() => {
-    'classLevel': classLevel,
-    'section': section,
-    'timeSlot': timeSlot,
-    'room': room,
-    'teacher': teacher,
-  };
-
-  factory ClassAssignment.fromJson(Map<String, dynamic> json) => ClassAssignment(
-    classLevel: json['classLevel'],
-    section: json['section'],
-    timeSlot: json['timeSlot'],
-    room: json['room'],
-    teacher: json['teacher'],
-  );
-}
-
-class SubjectModel {
+// ============ UI HELPER CLASS ============
+class SubjectUIModel {
   final String id;
   final String name;
   final String code;
   final List<String> teachers;
-  final List<String> teacherIds;
-  final SubjectStatus status;
-  final String? photo;
-  final List<ClassAssignment> classAssignments;
+  final bool isActive;
+  final List<Map<String, dynamic>> asign;
   final String school;
 
-  SubjectModel({
+  SubjectUIModel({
     required this.id,
     required this.name,
     required this.code,
     required this.teachers,
-    required this.teacherIds,
-    this.status = SubjectStatus.active,
-    this.photo,
-    this.classAssignments = const [],
-    this.school = 'School A',
+    required this.isActive,
+    required this.asign,
+    required this.school,
   });
 
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
-    'code': code,
-    'teachers': teachers,
-    'teacherIds': teacherIds,
-    'status': status.toString().split('.').last,
-    'photo': photo,
-    'classAssignments': classAssignments.map((a) => a.toJson()).toList(),
-    'school': school,
-  };
-
-  factory SubjectModel.fromJson(Map<String, dynamic> json) => SubjectModel(
-    id: json['id'],
-    name: json['name'],
-    code: json['code'],
-    teachers: List<String>.from(json['teachers']),
-    teacherIds: List<String>.from(json['teacherIds']),
-    status: SubjectStatus.values.firstWhere(
-          (e) => e.toString().split('.').last == json['status'],
-      orElse: () => SubjectStatus.active,
-    ),
-    photo: json['photo'],
-    classAssignments: (json['classAssignments'] as List)
-        .map((a) => ClassAssignment.fromJson(a))
-        .toList(),
-    school: json['school'] ?? 'School A',
-  );
-
-  String get statusDisplay => status.toString().split('.').last;
-  Color get statusColor {
-    switch (status) {
-      case SubjectStatus.active: return Colors.green;
-      case SubjectStatus.inactive: return Colors.red;
-      case SubjectStatus.upcoming: return Colors.orange;
-      case SubjectStatus.completed: return Colors.blue;
-    }
+  factory SubjectUIModel.fromApi(SubjectApiModel api) {
+    return SubjectUIModel(
+      id: api.id.toString(),
+      name: api.subjectName,
+      code: api.subjectName.substring(0, 3).toUpperCase(),
+      teachers: api.asign.map((a) => a.teacherName).toList(),
+      isActive: api.checkBox,
+      asign: api.asign.map((a) => ({
+        'slotTime': a.slotTime,
+        'classLevel': a.className,
+        'room': a.roomNumber,
+        'section': a.sectionName,
+        'teacher': a.teacherName,
+      })).toList(),
+      school: api.schoolType == 'a' ? 'School A' : 'School B',
+    );
   }
 }
 
@@ -135,13 +83,13 @@ class SubjectScreen extends StatefulWidget {
 }
 
 class _SubjectScreenState extends State<SubjectScreen> {
+  final SubjectController controller = Get.find<SubjectController>();
+
   // ============ STATE ============
-  List<SubjectModel> _subjects = [];
   SubjectFilter _currentFilter = SubjectFilter.all;
   SchoolFilter _currentSchoolFilter = SchoolFilter.all;
   String _searchQuery = '';
   bool _showRightPanel = false;
-  SubjectModel? _selectedSubject;
   bool _isEditing = false;
   bool _isAddingNew = false;
   bool _showScheduleView = false;
@@ -149,14 +97,11 @@ class _SubjectScreenState extends State<SubjectScreen> {
   // ============ FORM CONTROLLERS ============
   final _formKey = GlobalKey<FormState>();
   final _subjectNameController = TextEditingController();
-  final _subjectCodeController = TextEditingController();
 
   // ============ FORM STATE ============
-  SubjectStatus _selectedStatus = SubjectStatus.active;
-  String _selectedSchoolForm = 'School A';
-  List<String> _selectedTeachers = [];
-  List<ClassAssignment> _formAssignments = [];
-  File? _imageFile;
+  String _selectedSchoolForm = 'a';
+  bool _checkBox = true;
+  List<Map<String, dynamic>> _formAsign = [];
 
   // ============ CONSTANTS ============
   final List<String> _classLevels = [
@@ -175,354 +120,296 @@ class _SubjectScreenState extends State<SubjectScreen> {
     '2:00 PM - 2:45 PM',
     '2:45 PM - 3:30 PM',
   ];
-  final List<String> _statusList = ['Active', 'Inactive', 'Upcoming', 'Completed'];
   final List<String> _schoolList = ['School A', 'School B'];
 
   final List<Map<String, String>> _availableTeachers = [
-    {'id': 'T001', 'name': 'Dr. Rajesh Kumar', 'subject': 'Mathematics', 'school': 'School A'},
-    {'id': 'T002', 'name': 'Ms. Meera Singh', 'subject': 'Science', 'school': 'School A'},
-    {'id': 'T003', 'name': 'Mr. Suresh Patel', 'subject': 'English', 'school': 'School A'},
-    {'id': 'T004', 'name': 'Mrs. Anita Sharma', 'subject': 'History', 'school': 'School A'},
-    {'id': 'T005', 'name': 'Mr. Vikram Reddy', 'subject': 'Computer Science', 'school': 'School A'},
-    {'id': 'T006', 'name': 'Dr. Priya Gupta', 'subject': 'Biology', 'school': 'School B'},
-    {'id': 'T007', 'name': 'Mr. Arjun Nair', 'subject': 'Physics', 'school': 'School B'},
-    {'id': 'T008', 'name': 'Ms. Kavya Reddy', 'subject': 'Chemistry', 'school': 'School B'},
-    {'id': 'T009', 'name': 'Mr. Amit Singh', 'subject': 'Geography', 'school': 'School B'},
-    {'id': 'T010', 'name': 'Ms. Neha Sharma', 'subject': 'Art', 'school': 'School B'},
+    {'id': 'T001', 'name': 'Dr. Rajesh Kumar', 'subject': 'Mathematics', 'school': 'a'},
+    {'id': 'T002', 'name': 'Ms. Meera Singh', 'subject': 'Science', 'school': 'a'},
+    {'id': 'T003', 'name': 'Mr. Suresh Patel', 'subject': 'English', 'school': 'a'},
+    {'id': 'T004', 'name': 'Mrs. Anita Sharma', 'subject': 'History', 'school': 'a'},
+    {'id': 'T005', 'name': 'Mr. Vikram Reddy', 'subject': 'Computer Science', 'school': 'a'},
+    {'id': 'T006', 'name': 'Dr. Priya Gupta', 'subject': 'Biology', 'school': 'b'},
+    {'id': 'T007', 'name': 'Mr. Arjun Nair', 'subject': 'Physics', 'school': 'b'},
+    {'id': 'T008', 'name': 'Ms. Kavya Reddy', 'subject': 'Chemistry', 'school': 'b'},
+    {'id': 'T009', 'name': 'Mr. Amit Singh', 'subject': 'Geography', 'school': 'b'},
+    {'id': 'T010', 'name': 'Ms. Neha Sharma', 'subject': 'Art', 'school': 'b'},
   ];
 
   @override
   void initState() {
     super.initState();
-    _loadSampleData();
+    controller.loadSubjects();
   }
 
   @override
   void dispose() {
     _subjectNameController.dispose();
-    _subjectCodeController.dispose();
     super.dispose();
   }
 
-  // ============ SAMPLE DATA ============
-  void _loadSampleData() {
-    _subjects = [
-      // School A Subjects
-      SubjectModel(
-        id: 'SUB001',
-        name: 'Mathematics',
-        code: 'MATH',
-        teachers: ['Dr. Rajesh Kumar', 'Mr. Arjun Nair'],
-        teacherIds: ['T001', 'T007'],
-        school: 'School A',
-        classAssignments: [
-          ClassAssignment(
-            classLevel: '10th',
-            section: 'A',
-            timeSlot: '8:00 AM - 8:45 AM',
-            room: '101',
-            teacher: 'Dr. Rajesh Kumar',
-          ),
-          ClassAssignment(
-            classLevel: '10th',
-            section: 'B',
-            timeSlot: '9:30 AM - 10:15 AM',
-            room: '102',
-            teacher: 'Dr. Rajesh Kumar',
-          ),
-          ClassAssignment(
-            classLevel: '9th',
-            section: 'A',
-            timeSlot: '10:30 AM - 11:15 AM',
-            room: '201',
-            teacher: 'Mr. Arjun Nair',
-          ),
-        ],
-      ),
-      SubjectModel(
-        id: 'SUB002',
-        name: 'Science',
-        code: 'SCI',
-        teachers: ['Ms. Meera Singh', 'Dr. Priya Gupta'],
-        teacherIds: ['T002', 'T006'],
-        school: 'School A',
-        classAssignments: [
-          ClassAssignment(
-            classLevel: '10th',
-            section: 'A',
-            timeSlot: '8:45 AM - 9:30 AM',
-            room: '101',
-            teacher: 'Ms. Meera Singh',
-          ),
-          ClassAssignment(
-            classLevel: '9th',
-            section: 'B',
-            timeSlot: '11:15 AM - 12:00 PM',
-            room: '202',
-            teacher: 'Dr. Priya Gupta',
-          ),
-        ],
-      ),
-      SubjectModel(
-        id: 'SUB003',
-        name: 'English',
-        code: 'ENG',
-        teachers: ['Mr. Suresh Patel'],
-        teacherIds: ['T003'],
-        school: 'School A',
-        classAssignments: [
-          ClassAssignment(
-            classLevel: '8th',
-            section: 'A',
-            timeSlot: '9:30 AM - 10:15 AM',
-            room: '301',
-            teacher: 'Mr. Suresh Patel',
-          ),
-        ],
-      ),
-      SubjectModel(
-        id: 'SUB004',
-        name: 'History',
-        code: 'HIS',
-        teachers: ['Mrs. Anita Sharma'],
-        teacherIds: ['T004'],
-        school: 'School A',
-        classAssignments: [],
-      ),
-      SubjectModel(
-        id: 'SUB005',
-        name: 'Computer Science',
-        code: 'CS',
-        teachers: ['Mr. Vikram Reddy'],
-        teacherIds: ['T005'],
-        school: 'School A',
-        classAssignments: [
-          ClassAssignment(
-            classLevel: '10th',
-            section: 'A',
-            timeSlot: '11:15 AM - 12:00 PM',
-            room: 'Computer Lab',
-            teacher: 'Mr. Vikram Reddy',
-          ),
-        ],
-      ),
-      // School B Subjects
-      SubjectModel(
-        id: 'SUB006',
-        name: 'Physics',
-        code: 'PHY',
-        teachers: ['Mr. Arjun Nair', 'Dr. Priya Gupta'],
-        teacherIds: ['T007', 'T006'],
-        school: 'School B',
-        status: SubjectStatus.upcoming,
-        classAssignments: [
-          ClassAssignment(
-            classLevel: '11th',
-            section: 'A',
-            timeSlot: '8:00 AM - 8:45 AM',
-            room: 'Physics Lab',
-            teacher: 'Mr. Arjun Nair',
-          ),
-        ],
-      ),
-      SubjectModel(
-        id: 'SUB007',
-        name: 'Chemistry',
-        code: 'CHE',
-        teachers: ['Ms. Kavya Reddy'],
-        teacherIds: ['T008'],
-        school: 'School B',
-        status: SubjectStatus.upcoming,
-        classAssignments: [],
-      ),
-      SubjectModel(
-        id: 'SUB008',
-        name: 'Biology',
-        code: 'BIO',
-        teachers: ['Dr. Priya Gupta'],
-        teacherIds: ['T006'],
-        school: 'School B',
-        classAssignments: [
-          ClassAssignment(
-            classLevel: '10th',
-            section: 'B',
-            timeSlot: '12:00 PM - 12:45 PM',
-            room: 'Bio Lab',
-            teacher: 'Dr. Priya Gupta',
-          ),
-        ],
-      ),
-      SubjectModel(
-        id: 'SUB009',
-        name: 'Geography',
-        code: 'GEO',
-        teachers: ['Mr. Amit Singh'],
-        teacherIds: ['T009'],
-        school: 'School B',
-        status: SubjectStatus.inactive,
-        classAssignments: [],
-      ),
-      SubjectModel(
-        id: 'SUB010',
-        name: 'Art',
-        code: 'ART',
-        teachers: ['Ms. Neha Sharma'],
-        teacherIds: ['T010'],
-        school: 'School B',
-        classAssignments: [],
-      ),
-    ];
-  }
-
   // ============ GETTERS ============
-  List<SubjectModel> get _filteredSubjects {
-    var filtered = _subjects;
+  List<SubjectUIModel> get _filteredSubjects {
+    var filtered = controller.subjects.map((s) => SubjectUIModel.fromApi(s)).toList();
 
-    // School Filter
     if (_currentSchoolFilter == SchoolFilter.schoolA) {
-      filtered = filtered.where((subject) => subject.school == 'School A').toList();
+      filtered = filtered.where((s) => s.school == 'School A').toList();
     } else if (_currentSchoolFilter == SchoolFilter.schoolB) {
-      filtered = filtered.where((subject) => subject.school == 'School B').toList();
+      filtered = filtered.where((s) => s.school == 'School B').toList();
     }
 
-    // Subject Filter
     if (_currentFilter != SubjectFilter.all) {
-      filtered = filtered.where((subject) {
+      filtered = filtered.where((s) {
         switch (_currentFilter) {
-          case SubjectFilter.active: return subject.status == SubjectStatus.active;
-          case SubjectFilter.inactive: return subject.status == SubjectStatus.inactive;
-          case SubjectFilter.upcoming: return subject.status == SubjectStatus.upcoming;
-          case SubjectFilter.completed: return subject.status == SubjectStatus.completed;
-          case SubjectFilter.withTeacher: return subject.teachers.isNotEmpty;
-          case SubjectFilter.withoutTeacher: return subject.teachers.isEmpty;
-          case SubjectFilter.withSchedule: return subject.classAssignments.isNotEmpty;
-          case SubjectFilter.withoutSchedule: return subject.classAssignments.isEmpty;
+          case SubjectFilter.active: return s.isActive == true;
+          case SubjectFilter.inactive: return s.isActive == false;
+          case SubjectFilter.withTeacher: return s.teachers.isNotEmpty;
+          case SubjectFilter.withoutTeacher: return s.teachers.isEmpty;
+          case SubjectFilter.withSchedule: return s.asign.any((a) => a['slotTime'] != null);
+          case SubjectFilter.withoutSchedule: return s.asign.every((a) => a['slotTime'] == null);
           default: return true;
         }
       }).toList();
     }
 
-    // Search Filter
     if (_searchQuery.isNotEmpty) {
-      filtered = filtered.where((subject) =>
-      subject.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          subject.code.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          subject.teachers.any((t) => t.toLowerCase().contains(_searchQuery.toLowerCase())) ||
-          subject.school.toLowerCase().contains(_searchQuery.toLowerCase())
+      final query = _searchQuery.toLowerCase();
+      filtered = filtered.where((s) =>
+      s.name.toLowerCase().contains(query) ||
+          s.code.toLowerCase().contains(query) ||
+          s.teachers.any((t) => t.toLowerCase().contains(query)) ||
+          s.school.toLowerCase().contains(query)
       ).toList();
     }
 
     return filtered;
   }
 
-  int get _totalSubjects => _subjects.length;
-  int get _activeSubjects => _subjects.where((s) => s.status == SubjectStatus.active).length;
-  int get _subjectsWithTeachers => _subjects.where((s) => s.teachers.isNotEmpty).length;
-  int get _subjectsWithSchedule => _subjects.where((s) => s.classAssignments.isNotEmpty).length;
+  int get _totalSubjects => controller.subjects.length;
+  int get _activeSubjects => controller.subjects.where((s) => s.checkBox).length;
+  int get _subjectsWithTeachers => controller.subjects.where((s) => s.asign.isNotEmpty).length;
+  int get _subjectsWithSchedule => controller.subjects.where((s) => s.asign.any((a) => a.slotTime != null)).length;
 
-  Map<String, int> get _schoolWiseStats {
-    Map<String, int> stats = {};
-    for (var subject in _subjects) {
-      stats[subject.school] = (stats[subject.school] ?? 0) + 1;
-    }
-    return stats;
+  Map<String, int> get _schoolWiseStats => controller.schoolWiseStats;
+
+  // ============ SHIMMER WIDGETS ============
+  Widget _buildShimmerCard() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey[200]!, width: 1),
+      ),
+      child: Row(
+        children: [
+          Shimmer.fromColors(
+            baseColor: Colors.grey[300]!,
+            highlightColor: Colors.grey[100]!,
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Shimmer.fromColors(
+                  baseColor: Colors.grey[300]!,
+                  highlightColor: Colors.grey[100]!,
+                  child: Container(
+                    height: 14,
+                    width: double.infinity,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Shimmer.fromColors(
+                  baseColor: Colors.grey[300]!,
+                  highlightColor: Colors.grey[100]!,
+                  child: Container(
+                    height: 10,
+                    width: 100,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Row(
+            children: [
+              Shimmer.fromColors(
+                baseColor: Colors.grey[300]!,
+                highlightColor: Colors.grey[100]!,
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Shimmer.fromColors(
+                baseColor: Colors.grey[300]!,
+                highlightColor: Colors.grey[100]!,
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Shimmer.fromColors(
+                baseColor: Colors.grey[300]!,
+                highlightColor: Colors.grey[100]!,
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShimmerList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(12),
+      itemCount: 6,
+      itemBuilder: (context, index) => _buildShimmerCard(),
+    );
+  }
+
+  Widget _buildShimmerRightPanel() {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Shimmer.fromColors(
+              baseColor: Colors.grey[300]!,
+              highlightColor: Colors.grey[100]!,
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Shimmer.fromColors(
+              baseColor: Colors.grey[300]!,
+              highlightColor: Colors.grey[100]!,
+              child: Container(
+                height: 20,
+                width: 200,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Shimmer.fromColors(
+              baseColor: Colors.grey[300]!,
+              highlightColor: Colors.grey[100]!,
+              child: Container(
+                height: 14,
+                width: 150,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // ============ FORM METHODS ============
   void _resetForm() {
     _subjectNameController.clear();
-    _subjectCodeController.clear();
-    _selectedTeachers = [];
-    _selectedStatus = SubjectStatus.active;
-    _selectedSchoolForm = 'School A';
-    _formAssignments = [];
-    _imageFile = null;
+    _selectedSchoolForm = 'a';
+    _checkBox = true;
+    _formAsign = [];
   }
 
-  void _loadSubjectToForm(SubjectModel subject) {
-    _subjectNameController.text = subject.name;
-    _subjectCodeController.text = subject.code;
-    _selectedTeachers = List.from(subject.teachers);
-    _selectedStatus = subject.status;
-    _selectedSchoolForm = subject.school;
-    _formAssignments = List.from(subject.classAssignments);
-    _imageFile = subject.photo != null ? File(subject.photo!) : null;
-  }
-
-  SubjectModel _createSubjectFromForm(String id) {
-    final teacherIds = _selectedTeachers.map((name) {
-      return _availableTeachers.firstWhere(
-            (t) => t['name'] == name,
-        orElse: () => {'id': 'UNKNOWN'},
-      )['id']!;
-    }).toList();
-
-    return SubjectModel(
-      id: id,
-      name: _subjectNameController.text.trim(),
-      code: _subjectCodeController.text.trim().toUpperCase(),
-      teachers: List.from(_selectedTeachers),
-      teacherIds: teacherIds,
-      status: _selectedStatus,
-      photo: _imageFile?.path,
-      school: _selectedSchoolForm,
-      classAssignments: _formAssignments.map((a) => ClassAssignment(
-        classLevel: a.classLevel,
-        section: a.section,
-        timeSlot: a.timeSlot,
-        room: a.room,
-        teacher: a.teacher,
-      )).toList(),
-    );
+  void _loadSubjectToForm(SubjectApiModel subject) {
+    _subjectNameController.text = subject.subjectName;
+    _selectedSchoolForm = subject.schoolType;
+    _checkBox = subject.checkBox;
+    _formAsign = subject.asign.map((a) => ({
+      'slotTime': a.slotTime,
+      'classLevel': a.className,
+      'room': a.roomNumber,
+      'section': a.sectionName,
+      'teacher': a.teacherName,
+    })).toList();
   }
 
   // ============ CRUD OPERATIONS ============
+
+  // ADD SUBJECT - Using controller.addSubject()
   void _addSubject() {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedTeachers.isEmpty) {
-      _showSnackbar('Please select at least one teacher', Colors.orange);
+    if (_formAsign.isEmpty) {
+      FlutterToast.warning('Please add at least one teacher assignment');
       return;
     }
 
-    final newSubject = _createSubjectFromForm('SUB${(_subjects.length + 1).toString().padLeft(3, '0')}');
+    // Set form data in controller
+    controller.nameController.text = _subjectNameController.text.trim();
+    controller.selectedSchoolForm.value = _selectedSchoolForm;
+    controller.checkBox.value = _checkBox;
+    controller.formAsign.value = _formAsign;
 
-    setState(() {
-      _subjects.add(newSubject);
-      _showRightPanel = false;
-      _isAddingNew = false;
-      _resetForm();
-    });
+    // Call controller's addSubject method
+    controller.addSubject();
 
-    _showSnackbar('Subject added successfully!', Colors.green);
+    // Close panel after add (will be handled by controller)
   }
 
+  // UPDATE SUBJECT - Using controller.updateSubject()
   void _updateSubject() {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedTeachers.isEmpty) {
-      _showSnackbar('Please select at least one teacher', Colors.orange);
+    if (_formAsign.isEmpty) {
+      FlutterToast.warning('Please add at least one teacher assignment');
       return;
     }
 
-    final updatedSubject = _createSubjectFromForm(_selectedSubject!.id);
-    final index = _subjects.indexWhere((s) => s.id == _selectedSubject!.id);
+    // Set form data in controller
+    controller.nameController.text = _subjectNameController.text.trim();
+    controller.selectedSchoolForm.value = _selectedSchoolForm;
+    controller.checkBox.value = _checkBox;
+    controller.formAsign.value = _formAsign;
 
-    if (index != -1) {
-      setState(() {
-        _subjects[index] = updatedSubject;
-        _selectedSubject = updatedSubject;
-        _isEditing = false;
-        _resetForm();
-      });
-      _showSnackbar('Subject updated successfully!', Colors.blue);
-    }
+    // Call controller's updateSubject method
+    controller.updateSubject();
   }
 
-  void _deleteSubject(SubjectModel subject) {
+  // DELETE SUBJECT - Using controller.deleteSubject()
+  void _deleteSubject(SubjectApiModel subject) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Subject'),
-        content: Text('Are you sure you want to delete ${subject.name}?'),
+        content: Text('Are you sure you want to delete ${subject.subjectName}?'),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         actions: [
           TextButton(
@@ -532,14 +419,8 @@ class _SubjectScreenState extends State<SubjectScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              setState(() {
-                _subjects.removeWhere((s) => s.id == subject.id);
-                if (_selectedSubject?.id == subject.id) {
-                  _showRightPanel = false;
-                  _selectedSubject = null;
-                }
-              });
-              _showSnackbar('Subject deleted successfully!', Colors.red);
+              // Call controller's deleteSubject method
+              controller.deleteSubject(subject);
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Delete'),
@@ -552,78 +433,33 @@ class _SubjectScreenState extends State<SubjectScreen> {
   // ============ ASSIGNMENT MANAGEMENT ============
   void _addAssignmentToForm() {
     setState(() {
-      _formAssignments.add(ClassAssignment(
-        classLevel: '10th',
-        section: 'A',
-        timeSlot: '8:00 AM - 8:45 AM',
-        room: '',
-        teacher: _selectedTeachers.isNotEmpty ? _selectedTeachers[0] : '',
-      ));
+      _formAsign.add({
+        'slotTime': null,
+        'classLevel': '10th',
+        'room': null,
+        'section': 'A',
+        'teacher': _availableTeachers.isNotEmpty ? _availableTeachers[0]['name'] : '',
+      });
     });
   }
 
   void _removeAssignmentFromForm(int index) {
     setState(() {
-      _formAssignments.removeAt(index);
+      _formAsign.removeAt(index);
     });
   }
 
   void _updateAssignmentField(int index, String key, dynamic value) {
     setState(() {
-      final assignment = _formAssignments[index];
-      switch (key) {
-        case 'classLevel':
-          _formAssignments[index] = ClassAssignment(
-            classLevel: value,
-            section: assignment.section,
-            timeSlot: assignment.timeSlot,
-            room: assignment.room,
-            teacher: assignment.teacher,
-          );
-          break;
-        case 'section':
-          _formAssignments[index] = ClassAssignment(
-            classLevel: assignment.classLevel,
-            section: value,
-            timeSlot: assignment.timeSlot,
-            room: assignment.room,
-            teacher: assignment.teacher,
-          );
-          break;
-        case 'timeSlot':
-          _formAssignments[index] = ClassAssignment(
-            classLevel: assignment.classLevel,
-            section: assignment.section,
-            timeSlot: value,
-            room: assignment.room,
-            teacher: assignment.teacher,
-          );
-          break;
-        case 'room':
-          _formAssignments[index] = ClassAssignment(
-            classLevel: assignment.classLevel,
-            section: assignment.section,
-            timeSlot: assignment.timeSlot,
-            room: value,
-            teacher: assignment.teacher,
-          );
-          break;
-        case 'teacher':
-          _formAssignments[index] = ClassAssignment(
-            classLevel: assignment.classLevel,
-            section: assignment.section,
-            timeSlot: assignment.timeSlot,
-            room: assignment.room,
-            teacher: value,
-          );
-          break;
-      }
+      final asign = Map<String, dynamic>.from(_formAsign[index]);
+      asign[key] = value;
+      _formAsign[index] = asign;
     });
   }
 
   // ============ TEACHER SELECTION ============
   void _showTeacherSelectionDialog() {
-    List<String> tempSelected = List.from(_selectedTeachers);
+    List<String> tempSelected = _formAsign.map((a) => a['teacher'] as String).toList();
 
     showDialog(
       context: context,
@@ -668,7 +504,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
                           ],
                         ),
                         Text(
-                          '${teacher['subject'] ?? ''} • ${teacher['school']}',
+                          '${teacher['subject'] ?? ''} • ${teacher['school'] == 'a' ? 'School A' : 'School B'}',
                           style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                         ),
                       ],
@@ -701,9 +537,6 @@ class _SubjectScreenState extends State<SubjectScreen> {
               ),
               ElevatedButton(
                 onPressed: () {
-                  setState(() {
-                    _selectedTeachers = List.from(tempSelected);
-                  });
                   Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(
@@ -719,51 +552,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
     );
   }
 
-  // ============ IMAGE PICKER USING FILE_PICKER ============
-  Future<void> _pickImage() async {
-    try {
-      // Pick image file using file_picker
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.image,
-        allowMultiple: false,
-        withData: false, // Don't read file data to memory for large files
-      );
-
-      if (result != null && result.files.isNotEmpty) {
-        final file = result.files.first;
-        // Check if file size is reasonable (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-          _showSnackbar('Image size too large. Please select an image under 5MB.', Colors.orange);
-          return;
-        }
-        // Get the file path
-        String? filePath = file.path;
-        if (filePath != null) {
-          setState(() {
-            _imageFile = File(filePath);
-          });
-        } else {
-          _showSnackbar('Failed to get image file path', Colors.red);
-        }
-      }
-    } catch (e) {
-      _showSnackbar('Error picking image: ${e.toString()}', Colors.red);
-    }
-  }
-
   // ============ HELPERS ============
-  void _showSnackbar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        margin: const EdgeInsets.all(12),
-      ),
-    );
-  }
-
   Color _getSchoolColor(String school) {
     switch (school) {
       case 'School A': return Colors.blue;
@@ -772,10 +561,8 @@ class _SubjectScreenState extends State<SubjectScreen> {
     }
   }
 
-  String _getInitials(String name) {
-    final parts = name.split(' ');
-    if (parts.length >= 2) return parts[0][0] + parts[1][0];
-    return name.substring(0, 2).toUpperCase();
+  Color _getStatusColor(bool isActive) {
+    return isActive ? Colors.green : Colors.red;
   }
 
   String _getFilterLabel(SubjectFilter filter) {
@@ -783,12 +570,11 @@ class _SubjectScreenState extends State<SubjectScreen> {
       case SubjectFilter.all: return 'All';
       case SubjectFilter.active: return 'Active';
       case SubjectFilter.inactive: return 'Inactive';
-      case SubjectFilter.upcoming: return 'Upcoming';
-      case SubjectFilter.completed: return 'Completed';
       case SubjectFilter.withTeacher: return 'With Teacher';
       case SubjectFilter.withoutTeacher: return 'No Teacher';
       case SubjectFilter.withSchedule: return 'Scheduled';
       case SubjectFilter.withoutSchedule: return 'No Schedule';
+      default: return '';
     }
   }
 
@@ -802,74 +588,120 @@ class _SubjectScreenState extends State<SubjectScreen> {
         ? 'School A'
         : 'School B';
 
-    return Scaffold(
-      body: Container(
-        margin: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.05),
-              spreadRadius: 1,
-              blurRadius: 10,
+    return Obx(() {
+      // Show shimmer while loading
+      if (controller.isLoading.value && controller.subjects.isEmpty) {
+        return Scaffold(
+          body: Container(
+            margin: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
             ),
-          ],
-        ),
-        child: Row(
-          children: [
-            // Left Panel
-            Expanded(
-              flex: _showRightPanel ? 5 : 8,
-              child: Column(
-                children: [
-                  _buildHeader(schoolLabel, schoolStats),
-                  _buildFilterSearchBar(),
-                  Expanded(
-                    child: _filteredSubjects.isEmpty
-                        ? _buildEmptyState()
-                        : ListView.builder(
-                      padding: const EdgeInsets.all(12),
-                      itemCount: _filteredSubjects.length,
-                      itemBuilder: (context, index) {
-                        return _buildSubjectCard(_filteredSubjects[index]);
-                      },
+            child: Row(
+              children: [
+                Expanded(
+                  flex: _showRightPanel ? 5 : 8,
+                  child: Column(
+                    children: [
+                      _buildHeader(schoolLabel, schoolStats),
+                      _buildFilterSearchBar(),
+                      Expanded(child: _buildShimmerList()),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 480,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: const BorderRadius.only(
+                      topRight: Radius.circular(16),
+                      bottomRight: Radius.circular(16),
+                    ),
+                    border: Border(
+                      left: BorderSide(
+                        color: Colors.grey[200]!,
+                        width: 1,
+                      ),
                     ),
                   ),
-                ],
-              ),
-            ),
-
-            // Right Panel
-            Container(
-              width: 480,
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: const BorderRadius.only(
-                  topRight: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
+                  child: _buildShimmerRightPanel(),
                 ),
-                border: Border(
-                  left: BorderSide(
-                    color: Colors.grey[200]!,
-                    width: 1,
+              ],
+            ),
+          ),
+        );
+      }
+
+      return Scaffold(
+        body: Container(
+          margin: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.05),
+                spreadRadius: 1,
+                blurRadius: 10,
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              // Left Panel
+              Expanded(
+                flex: _showRightPanel ? 5 : 8,
+                child: Column(
+                  children: [
+                    _buildHeader(schoolLabel, schoolStats),
+                    _buildFilterSearchBar(),
+                    Expanded(
+                      child: _filteredSubjects.isEmpty
+                          ? _buildEmptyState()
+                          : ListView.builder(
+                        padding: const EdgeInsets.all(12),
+                        itemCount: _filteredSubjects.length,
+                        itemBuilder: (context, index) {
+                          return _buildSubjectCard(_filteredSubjects[index]);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Right Panel
+              Container(
+                width: 480,
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: const BorderRadius.only(
+                    topRight: Radius.circular(16),
+                    bottomRight: Radius.circular(16),
+                  ),
+                  border: Border(
+                    left: BorderSide(
+                      color: Colors.grey[200]!,
+                      width: 1,
+                    ),
                   ),
                 ),
+                child: _showRightPanel
+                    ? (_isAddingNew
+                    ? _buildAddPanel()
+                    : _isEditing
+                    ? _buildEditPanel()
+                    : _showScheduleView
+                    ? _buildSchedulePanel()
+                    : _buildViewPanel())
+                    : _buildEmptyRightPanel(),
               ),
-              child: _showRightPanel
-                  ? (_isAddingNew
-                  ? _buildAddPanel()
-                  : _isEditing
-                  ? _buildEditPanel()
-                  : _showScheduleView
-                  ? _buildSchedulePanel()
-                  : _buildViewPanel())
-                  : _buildEmptyRightPanel(),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   // ============ EMPTY RIGHT PANEL ============
@@ -946,7 +778,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
                   _isAddingNew = true;
                   _isEditing = false;
                   _showScheduleView = false;
-                  _selectedSubject = null;
+                  controller.selectedSubject.value = null;
                   _showRightPanel = true;
                 });
               },
@@ -1067,8 +899,6 @@ class _SubjectScreenState extends State<SubjectScreen> {
           ),
           Row(
             children: [
-
-              // School Filter Dropdown - SINGLE FILTER
               Container(
                 height: 36,
                 padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -1082,8 +912,8 @@ class _SubjectScreenState extends State<SubjectScreen> {
                     value: _currentSchoolFilter,
                     style: const TextStyle(fontSize: 12, color: Colors.black87),
                     icon: Icon(Icons.school, color: Colors.grey[600], size: 18),
-                    items: [
-                      const DropdownMenuItem(
+                    items: const [
+                      DropdownMenuItem(
                         value: SchoolFilter.all,
                         child: Row(
                           children: [
@@ -1093,7 +923,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
                           ],
                         ),
                       ),
-                      const DropdownMenuItem(
+                      DropdownMenuItem(
                         value: SchoolFilter.schoolA,
                         child: Row(
                           children: [
@@ -1103,7 +933,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
                           ],
                         ),
                       ),
-                      const DropdownMenuItem(
+                      DropdownMenuItem(
                         value: SchoolFilter.schoolB,
                         child: Row(
                           children: [
@@ -1117,14 +947,13 @@ class _SubjectScreenState extends State<SubjectScreen> {
                     onChanged: (value) {
                       setState(() {
                         _currentSchoolFilter = value!;
-                        _selectedSubject = null;
+                        controller.selectedSubject.value = null;
                         _showRightPanel = false;
                       });
                     },
                   ),
                 ),
               ),
-
               const SizedBox(width: 8),
               if (!_showRightPanel || !_isAddingNew)
                 ElevatedButton.icon(
@@ -1134,7 +963,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
                       _isAddingNew = true;
                       _isEditing = false;
                       _showScheduleView = false;
-                      _selectedSubject = null;
+                      controller.selectedSubject.value = null;
                       _showRightPanel = true;
                     });
                   },
@@ -1155,7 +984,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
                   onPressed: () {
                     setState(() {
                       _showRightPanel = false;
-                      _selectedSubject = null;
+                      controller.selectedSubject.value = null;
                       _isEditing = false;
                       _isAddingNew = false;
                       _showScheduleView = false;
@@ -1176,7 +1005,6 @@ class _SubjectScreenState extends State<SubjectScreen> {
       SubjectFilter.all,
       SubjectFilter.active,
       SubjectFilter.inactive,
-      SubjectFilter.upcoming,
       SubjectFilter.withTeacher,
       SubjectFilter.withoutTeacher,
       SubjectFilter.withSchedule,
@@ -1234,8 +1062,6 @@ class _SubjectScreenState extends State<SubjectScreen> {
     Color color = Colors.blue;
     if (filter == SubjectFilter.active) color = Colors.green;
     if (filter == SubjectFilter.inactive) color = Colors.red;
-    if (filter == SubjectFilter.upcoming) color = Colors.orange;
-    if (filter == SubjectFilter.completed) color = Colors.blue;
 
     return GestureDetector(
       onTap: () {
@@ -1266,10 +1092,11 @@ class _SubjectScreenState extends State<SubjectScreen> {
   }
 
   // ============ SUBJECT CARD ============
-  Widget _buildSubjectCard(SubjectModel subject) {
-    final isSelected = _selectedSubject?.id == subject.id;
+  Widget _buildSubjectCard(SubjectUIModel subject) {
+    final isSelected = controller.selectedSubject.value?.id.toString() == subject.id;
     final schoolColor = _getSchoolColor(subject.school);
     final hasTeacher = subject.teachers.isNotEmpty;
+    final hasSchedule = subject.asign.any((a) => a['slotTime'] != null);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -1284,7 +1111,6 @@ class _SubjectScreenState extends State<SubjectScreen> {
       ),
       child: Row(
         children: [
-          // Icon
           Container(
             width: 40,
             height: 40,
@@ -1299,13 +1125,15 @@ class _SubjectScreenState extends State<SubjectScreen> {
             ),
           ),
           const SizedBox(width: 12),
-
-          // Content
           Expanded(
             child: InkWell(
               onTap: () {
+                final apiSubject = controller.subjects.firstWhere(
+                      (s) => s.id.toString() == subject.id,
+                  orElse: () => controller.subjects.first,
+                );
                 setState(() {
-                  _selectedSubject = subject;
+                  controller.selectedSubject.value = apiSubject;
                   _showRightPanel = true;
                   _isEditing = false;
                   _isAddingNew = false;
@@ -1348,15 +1176,15 @@ class _SubjectScreenState extends State<SubjectScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: subject.statusColor.withOpacity(0.1),
+                          color: _getStatusColor(subject.isActive).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          subject.statusDisplay,
+                          subject.isActive ? 'Active' : 'Inactive',
                           style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.w600,
-                            color: subject.statusColor,
+                            color: _getStatusColor(subject.isActive),
                           ),
                         ),
                       ),
@@ -1369,19 +1197,17 @@ class _SubjectScreenState extends State<SubjectScreen> {
                     children: [
                       _buildInfoText(Icons.school, subject.school, color: schoolColor),
                       _buildInfoText(Icons.person, '${subject.teachers.length} Teacher(s)'),
-                      _buildInfoText(Icons.schedule, '${subject.classAssignments.length} Schedule(s)'),
+                      _buildInfoText(Icons.schedule, '${subject.asign.length} Schedule(s)'),
                     ],
                   ),
                 ],
               ),
             ),
           ),
-
-          // Action Buttons
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (subject.classAssignments.isNotEmpty)
+              if (hasSchedule)
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.orange[50],
@@ -1389,8 +1215,12 @@ class _SubjectScreenState extends State<SubjectScreen> {
                   ),
                   child: IconButton(
                     onPressed: () {
+                      final apiSubject = controller.subjects.firstWhere(
+                            (s) => s.id.toString() == subject.id,
+                        orElse: () => controller.subjects.first,
+                      );
                       setState(() {
-                        _selectedSubject = subject;
+                        controller.selectedSubject.value = apiSubject;
                         _showScheduleView = true;
                         _showRightPanel = true;
                         _isEditing = false;
@@ -1414,9 +1244,13 @@ class _SubjectScreenState extends State<SubjectScreen> {
                 ),
                 child: IconButton(
                   onPressed: () {
-                    _loadSubjectToForm(subject);
+                    final apiSubject = controller.subjects.firstWhere(
+                          (s) => s.id.toString() == subject.id,
+                      orElse: () => controller.subjects.first,
+                    );
+                    _loadSubjectToForm(apiSubject);
                     setState(() {
-                      _selectedSubject = subject;
+                      controller.selectedSubject.value = apiSubject;
                       _isEditing = true;
                       _isAddingNew = false;
                       _showScheduleView = false;
@@ -1439,7 +1273,13 @@ class _SubjectScreenState extends State<SubjectScreen> {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: IconButton(
-                  onPressed: () => _deleteSubject(subject),
+                  onPressed: () {
+                    final apiSubject = controller.subjects.firstWhere(
+                          (s) => s.id.toString() == subject.id,
+                      orElse: () => controller.subjects.first,
+                    );
+                    _deleteSubject(apiSubject);
+                  },
                   icon: Icon(
                     Icons.delete_outline,
                     size: 18,
@@ -1511,7 +1351,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
                 _isAddingNew = true;
                 _isEditing = false;
                 _showScheduleView = false;
-                _selectedSubject = null;
+                controller.selectedSubject.value = null;
                 _showRightPanel = true;
               });
             },
@@ -1534,19 +1374,19 @@ class _SubjectScreenState extends State<SubjectScreen> {
 
   // ============ VIEW PANEL ============
   Widget _buildViewPanel() {
-    if (_selectedSubject == null) return const SizedBox();
+    final subject = controller.selectedSubject.value;
+    if (subject == null) return const SizedBox();
 
-    final subject = _selectedSubject!;
-    final schoolColor = _getSchoolColor(subject.school);
-    final hasTeacher = subject.teachers.isNotEmpty;
-    final hasSchedule = subject.classAssignments.isNotEmpty;
+    final uiSubject = SubjectUIModel.fromApi(subject);
+    final schoolColor = _getSchoolColor(uiSubject.school);
+    final hasTeacher = uiSubject.teachers.isNotEmpty;
+    final hasSchedule = uiSubject.asign.any((a) => a['slotTime'] != null);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             children: [
               Container(
@@ -1568,7 +1408,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      subject.name,
+                      uiSubject.name,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -1590,7 +1430,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
                               Icon(Icons.school, size: 12, color: schoolColor),
                               const SizedBox(width: 4),
                               Text(
-                                subject.school,
+                                uiSubject.school,
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
@@ -1608,7 +1448,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            'Code: ${subject.code}',
+                            'Code: ${uiSubject.code}',
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w500,
@@ -1620,15 +1460,15 @@ class _SubjectScreenState extends State<SubjectScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: subject.statusColor.withOpacity(0.1),
+                            color: _getStatusColor(uiSubject.isActive).withOpacity(0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            subject.statusDisplay,
+                            uiSubject.isActive ? 'Active' : 'Inactive',
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
-                              color: subject.statusColor,
+                              color: _getStatusColor(uiSubject.isActive),
                             ),
                           ),
                         ),
@@ -1639,24 +1479,18 @@ class _SubjectScreenState extends State<SubjectScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 20),
           const Divider(),
           const SizedBox(height: 16),
-
-          // Info
-          _buildDetailRow('🏫 School', subject.school, color: schoolColor, isBold: true),
-          _buildDetailRow('📚 Subject', subject.name),
-          _buildDetailRow('🏷️ Code', subject.code),
-          _buildDetailRow('👨‍🏫 Teachers', subject.teachers.isEmpty ? 'No teachers assigned' : subject.teachers.join(', ')),
-          _buildDetailRow('📋 Status', subject.statusDisplay, color: subject.statusColor),
-
+          _buildDetailRow('🏫 School', uiSubject.school, color: schoolColor, isBold: true),
+          _buildDetailRow('📚 Subject', uiSubject.name),
+          _buildDetailRow('🏷️ Code', uiSubject.code),
+          _buildDetailRow('👨‍🏫 Teachers', uiSubject.teachers.isEmpty ? 'No teachers assigned' : uiSubject.teachers.join(', ')),
+          _buildDetailRow('📋 Status', uiSubject.isActive ? 'Active' : 'Inactive', color: _getStatusColor(uiSubject.isActive)),
           if (hasSchedule) ...[
             const SizedBox(height: 12),
             const Divider(),
             const SizedBox(height: 12),
-
-            // Schedule
             const Text(
               '📖 Class Schedule',
               style: TextStyle(
@@ -1666,7 +1500,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            ...subject.classAssignments.map((assignment) => Container(
+            ...uiSubject.asign.map((assignment) => Container(
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -1681,7 +1515,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '${assignment.classLevel} - Section ${assignment.section}',
+                        '${assignment['classLevel']} - Section ${assignment['section']}',
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
@@ -1695,7 +1529,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          'Room ${assignment.room}',
+                          'Room ${assignment['room'] ?? 'N/A'}',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
@@ -1706,16 +1540,13 @@ class _SubjectScreenState extends State<SubjectScreen> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  _buildDetailRow('⏰ Time', assignment.timeSlot),
-                  _buildDetailRow('👨‍🏫 Teacher', assignment.teacher),
+                  _buildDetailRow('⏰ Time', assignment['slotTime'] ?? 'Not Scheduled'),
+                  _buildDetailRow('👨‍🏫 Teacher', assignment['teacher']),
                 ],
               ),
             )),
           ],
-
           const SizedBox(height: 20),
-
-          // Action Buttons
           Row(
             children: [
               Expanded(
@@ -1723,7 +1554,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
                   onPressed: () {
                     setState(() {
                       _showRightPanel = false;
-                      _selectedSubject = null;
+                      controller.selectedSubject.value = null;
                     });
                   },
                   icon: const Icon(Icons.close, size: 18),
@@ -1837,9 +1668,10 @@ class _SubjectScreenState extends State<SubjectScreen> {
 
   // ============ SCHEDULE PANEL ============
   Widget _buildSchedulePanel() {
-    if (_selectedSubject == null) return const SizedBox();
+    final subject = controller.selectedSubject.value;
+    if (subject == null) return const SizedBox();
 
-    final subject = _selectedSubject!;
+    final uiSubject = SubjectUIModel.fromApi(subject);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -1852,7 +1684,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Schedule - ${subject.name}',
+                  'Schedule - ${uiSubject.name}',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -1873,8 +1705,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
             ],
           ),
           const SizedBox(height: 16),
-
-          if (subject.classAssignments.isEmpty)
+          if (uiSubject.asign.isEmpty || uiSubject.asign.every((a) => a['slotTime'] == null))
             Center(
               child: Column(
                 children: [
@@ -1896,7 +1727,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
               ),
             )
           else
-            ...subject.classAssignments.map((assignment) => Container(
+            ...uiSubject.asign.map((assignment) => Container(
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -1917,7 +1748,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          '${assignment.classLevel} - Section ${assignment.section}',
+                          '${assignment['classLevel']} - Section ${assignment['section']}',
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
@@ -1932,7 +1763,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          'Room ${assignment.room}',
+                          'Room ${assignment['room'] ?? 'N/A'}',
                           style: TextStyle(
                             fontSize: 11,
                             color: Colors.purple[700],
@@ -1947,7 +1778,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
                       const Icon(Icons.schedule, size: 14, color: Colors.grey),
                       const SizedBox(width: 4),
                       Text(
-                        assignment.timeSlot,
+                        assignment['slotTime'] ?? 'Not Scheduled',
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.grey[700],
@@ -1961,7 +1792,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
                       const Icon(Icons.person, size: 14, color: Colors.grey),
                       const SizedBox(width: 4),
                       Text(
-                        'Teacher: ${assignment.teacher}',
+                        'Teacher: ${assignment['teacher']}',
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.grey[700],
@@ -2029,7 +1860,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: _addSubject,
+                  onPressed: controller.isSubmitting.value ? null : _addSubject,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue[700],
                     foregroundColor: Colors.white,
@@ -2039,7 +1870,16 @@ class _SubjectScreenState extends State<SubjectScreen> {
                     ),
                     elevation: 0,
                   ),
-                  child: const Text(
+                  child: controller.isSubmitting.value
+                      ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                      : const Text(
                     'Add Subject',
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
@@ -2054,7 +1894,8 @@ class _SubjectScreenState extends State<SubjectScreen> {
 
   // ============ EDIT PANEL ============
   Widget _buildEditPanel() {
-    if (_selectedSubject == null) return const SizedBox();
+    final subject = controller.selectedSubject.value;
+    if (subject == null) return const SizedBox();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -2115,7 +1956,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: _updateSubject,
+                  onPressed: controller.isSubmitting.value ? null : _updateSubject,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue[700],
                     foregroundColor: Colors.white,
@@ -2125,7 +1966,16 @@ class _SubjectScreenState extends State<SubjectScreen> {
                     ),
                     elevation: 0,
                   ),
-                  child: const Text(
+                  child: controller.isSubmitting.value
+                      ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                      : const Text(
                     'Update',
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
@@ -2140,250 +1990,107 @@ class _SubjectScreenState extends State<SubjectScreen> {
 
   // ============ FORM FIELDS ============
   Widget _buildFormFields({required bool isAdding}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Photo Upload
-        Align(
-          alignment: Alignment.center,
-          child: _buildPhotoUpload(),
-        ),
-        const SizedBox(height: 16),
-
-        // Subject Information
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.blue[50],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.blue[200]!),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.book, color: Colors.blue[700], size: 16),
-              const SizedBox(width: 8),
-              Text(
-                'Subject Information',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.blue[700],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              flex: 2,
-              child: _buildFormTextField(_subjectNameController, 'Subject Name', Icons.book,
-                  hint: 'e.g., Mathematics', required: true),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildFormTextField(_subjectCodeController, 'Code', Icons.code,
-                  hint: 'e.g., MATH', required: true),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        _buildDropdownField('School', _schoolList, _selectedSchoolForm, (value) {
-          setState(() => _selectedSchoolForm = value!);
-        }),
-        const SizedBox(height: 12),
-
-        // Teachers
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.green[50],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.green[200]!),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.person_add, color: Colors.green[700], size: 16),
-              const SizedBox(width: 8),
-              Text(
-                'Teachers',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.green[700],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        GestureDetector(
-          onTap: _showTeacherSelectionDialog,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.grey[50],
+              color: Colors.blue[50],
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey[300]!),
+              border: Border.all(color: Colors.blue[200]!),
             ),
             child: Row(
               children: [
-                Icon(Icons.person_add, color: Colors.green[700], size: 20),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Select Teachers',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      if (_selectedTeachers.isNotEmpty)
-                        Text(
-                          _selectedTeachers.join(', '),
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        )
-                      else
-                        Text(
-                          'Tap to select teachers (${_availableTeachers.length} available)',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[400],
-                          ),
-                        ),
-                    ],
+                Icon(Icons.book, color: Colors.blue[700], size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  'Subject Information',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.blue[700],
                   ),
                 ),
-                Icon(Icons.arrow_forward_ios, color: Colors.grey[400], size: 16),
               ],
             ),
           ),
-        ),
-        if (_selectedTeachers.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _selectedTeachers.map((teacher) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.green[50],
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.green[200]!),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.person, size: 14, color: Colors.green[700]),
-                    const SizedBox(width: 4),
-                    Text(
-                      teacher,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.green[700],
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              )).toList(),
-            ),
-          ),
-        const SizedBox(height: 12),
-
-        // Status
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.orange[50],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.orange[200]!),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.info, color: Colors.orange[700], size: 16),
-              const SizedBox(width: 8),
-              Text(
-                'Status',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.orange[700],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        _buildDropdownField('Status', _statusList, _selectedStatus.toString().split('.').last, (value) {
-          setState(() {
-            _selectedStatus = SubjectStatus.values.firstWhere(
-                  (e) => e.toString().split('.').last == value,
-              orElse: () => SubjectStatus.active,
-            );
-          });
-        }),
-        const SizedBox(height: 12),
-
-        // Class Schedule
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.purple[50],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.purple[200]!),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.schedule, color: Colors.purple[700], size: 16),
-              const SizedBox(width: 8),
-              Text(
-                'Class Schedule',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.purple[700],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        ..._formAssignments.asMap().entries.map((entry) {
-          final index = entry.key;
-          final assignment = entry.value;
-          return _buildAssignmentForm(index, assignment);
-        }).toList(),
-        const SizedBox(height: 8),
-        ElevatedButton.icon(
-          onPressed: _addAssignmentToForm,
-          icon: const Icon(Icons.add, size: 16),
-          label: const Text('Add Schedule'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.purple[100],
-            foregroundColor: Colors.purple[700],
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            shape: RoundedRectangleBorder(
+          const SizedBox(height: 8),
+          _buildFormTextField(_subjectNameController, 'Subject Name', Icons.book,
+              hint: 'e.g., Mathematics', required: true),
+          const SizedBox(height: 8),
+          _buildDropdownField('School', _schoolList, _selectedSchoolForm == 'a' ? 'School A' : 'School B', (value) {
+            setState(() {
+              _selectedSchoolForm = value == 'School A' ? 'a' : 'b';
+            });
+          }, isCompact: true),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.green[50],
               borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.green[200]!),
             ),
-            elevation: 0,
+            child: Row(
+              children: [
+                Icon(Icons.person_add, color: Colors.green[700], size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  'Teacher Assignments',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.green[700],
+                  ),
+                ),
+                const Spacer(),
+                SizedBox(
+                  width: 130,
+                  child: _buildDropdownField('Status', ['Active', 'Inactive'],
+                      _checkBox ? 'Active' : 'Inactive', (value) {
+                        setState(() {
+                          _checkBox = value == 'Active';
+                        });
+                      }, isCompact: true),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 8),
+          ..._formAsign.asMap().entries.map((entry) {
+            final index = entry.key;
+            final asign = entry.value;
+            return _buildAsignForm(index, asign);
+          }).toList(),
+          const SizedBox(height: 8),
+          ElevatedButton.icon(
+            onPressed: _addAssignmentToForm,
+            icon: const Icon(Icons.add, size: 16),
+            label: const Text('Add Teacher Assignment'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green[100],
+              foregroundColor: Colors.green[700],
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: 0,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildAssignmentForm(int index, ClassAssignment assignment) {
+  Widget _buildAsignForm(int index, Map<String, dynamic> asign) {
+    final availableTeachers = _availableTeachers
+        .where((t) => t['school'] == _selectedSchoolForm)
+        .toList();
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -2399,11 +2106,11 @@ class _SubjectScreenState extends State<SubjectScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Schedule ${index + 1}',
+                'Assignment ${index + 1}',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
-                  color: Colors.purple[700],
+                  color: Colors.green[700],
                 ),
               ),
               IconButton(
@@ -2418,41 +2125,35 @@ class _SubjectScreenState extends State<SubjectScreen> {
           Row(
             children: [
               Expanded(
-                child: _buildDropdownField('Class', _classLevels, assignment.classLevel, (value) {
+                child: _buildDropdownField('Class', _classLevels, asign['classLevel'] ?? '10th', (value) {
                   _updateAssignmentField(index, 'classLevel', value);
                 }),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _buildDropdownField('Section', _sectionList, assignment.section, (value) {
+                child: _buildDropdownField('Section', _sectionList, asign['section'] ?? 'A', (value) {
                   _updateAssignmentField(index, 'section', value);
                 }),
               ),
             ],
           ),
           const SizedBox(height: 4),
-          _buildDropdownField('Time Slot', _timeSlots, assignment.timeSlot, (value) {
-            _updateAssignmentField(index, 'timeSlot', value);
+          _buildDropdownField('Time Slot', _timeSlots, asign['slotTime'] ?? _timeSlots[0], (value) {
+            _updateAssignmentField(index, 'slotTime', value);
           }),
           const SizedBox(height: 4),
           _buildFormTextField(
-            TextEditingController(
-              text: assignment.room,
-            ),
-            'Room',
+            TextEditingController(text: asign['room'] ?? ''),
+            'Room Number',
             Icons.room,
             hint: 'e.g., 101',
             onChanged: (value) {
-              _updateAssignmentField(
-                index,
-                'room',
-                value,
-              );
+              _updateAssignmentField(index, 'room', value);
             },
           ),
           const SizedBox(height: 4),
-          if (_selectedTeachers.isNotEmpty)
-            _buildDropdownField('Teacher', _selectedTeachers, assignment.teacher, (value) {
+          if (availableTeachers.isNotEmpty)
+            _buildDropdownField('Teacher', availableTeachers.map((t) => t['name']!).toList(), asign['teacher'] ?? '', (value) {
               _updateAssignmentField(index, 'teacher', value);
             })
           else
@@ -2468,7 +2169,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
                   Icon(Icons.warning, color: Colors.orange, size: 16),
                   const SizedBox(width: 8),
                   Text(
-                    'Please select teachers first',
+                    'No teachers available for this school',
                     style: TextStyle(fontSize: 12, color: Colors.orange),
                   ),
                 ],
@@ -2497,70 +2198,11 @@ class _SubjectScreenState extends State<SubjectScreen> {
         maxLines: maxLines,
         keyboardType: keyboardType,
         onChanged: onChanged,
-        style: const TextStyle(
-          fontSize: 13,
-        ),
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          prefixIcon: Icon(
-            icon,
-            size: 16,
-            color: Colors.grey[600],
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(
-              color: Colors.grey[300]!,
-            ),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(
-              color: Colors.grey[300]!,
-            ),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(
-              color: Colors.blue,
-              width: 1,
-            ),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 8,
-          ),
-          isDense: true,
-          filled: true,
-          fillColor: Colors.grey[50],
-          labelStyle: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
-          floatingLabelStyle: const TextStyle(
-            color: Colors.blue,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        validator: required
-            ? (v) => v?.trim().isEmpty ?? true
-            ? '$label is required'
-            : null
-            : null,
-      ),
-    );
-  }
-
-  Widget _buildDropdownField(String label, List<String> items, String value,
-      Function(String?) onChanged) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: DropdownButtonFormField<String>(
-        value: items.contains(value) ? value : items.first,
         style: const TextStyle(fontSize: 13),
         decoration: InputDecoration(
           labelText: label,
+          hintText: hint,
+          prefixIcon: Icon(icon, size: 16, color: Colors.grey[600]),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide(color: Colors.grey[300]!),
@@ -2577,10 +2219,52 @@ class _SubjectScreenState extends State<SubjectScreen> {
           isDense: true,
           filled: true,
           fillColor: Colors.grey[50],
-          labelStyle: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
+          labelStyle: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          floatingLabelStyle: const TextStyle(
+            color: Colors.blue,
+            fontWeight: FontWeight.w500,
           ),
+        ),
+        validator: required
+            ? (v) => v?.trim().isEmpty ?? true ? '$label is required' : null
+            : null,
+      ),
+    );
+  }
+
+  Widget _buildDropdownField(String label, List<String> items, String value,
+      Function(String?) onChanged, {bool isCompact = false}) {
+    String selectedValue = value;
+    if (!items.contains(selectedValue) && items.isNotEmpty) {
+      selectedValue = items.first;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: DropdownButtonFormField<String>(
+        value: selectedValue,
+        style: const TextStyle(fontSize: 13),
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.grey[300]!),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.grey[300]!),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Colors.blue, width: 1),
+          ),
+          contentPadding: isCompact
+              ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
+              : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          isDense: isCompact,
+          filled: true,
+          fillColor: Colors.grey[50],
+          labelStyle: TextStyle(fontSize: 12, color: Colors.grey[600]),
           floatingLabelStyle: const TextStyle(
             color: Colors.blue,
             fontWeight: FontWeight.w500,
@@ -2589,7 +2273,7 @@ class _SubjectScreenState extends State<SubjectScreen> {
         items: items.map((String item) {
           return DropdownMenuItem<String>(
             value: item,
-            child: Text(item, style: const TextStyle(fontSize: 13)),
+            child: Text(item, style: TextStyle(fontSize: isCompact ? 12 : 13)),
           );
         }).toList(),
         onChanged: onChanged,
@@ -2598,50 +2282,4 @@ class _SubjectScreenState extends State<SubjectScreen> {
       ),
     );
   }
-
-  Widget _buildPhotoUpload() {
-    return GestureDetector(
-      onTap: _pickImage,
-      child: Container(
-        height: 80,
-        width: 80,
-        decoration: BoxDecoration(
-          color: Colors.grey[50],
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: Colors.grey[300]!,
-            width: 2,
-          ),
-        ),
-        child: _imageFile != null
-            ? ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.file(
-            _imageFile!,
-            fit: BoxFit.cover,
-          ),
-        )
-            : Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.camera_alt,
-              color: Colors.blue[700],
-              size: 24,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'Upload Photo',
-              style: TextStyle(
-                fontSize: 9,
-                color: Colors.grey[500],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
-

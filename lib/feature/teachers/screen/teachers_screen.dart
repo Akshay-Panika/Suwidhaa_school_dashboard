@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import '../../../core/widget/flutter_toast.dart';
 import '../controller/teacher_controller.dart';
 import '../model/teacher_model.dart';
 
@@ -261,10 +262,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
     _selectedSchoolForm = teacher.school;
     _editingTeacherId = teacher.id;
 
-    // Store existing image URL for preview
     _existingImageUrl = teacher.teacherProfile;
-
-    // Don't try to convert URL to File - it's a URL string, not a local file path
     _imageFile = null;
     _imageBytes = null;
   }
@@ -281,13 +279,13 @@ class _TeachersScreenState extends State<TeachersScreen> {
       if (result != null && result.files.isNotEmpty) {
         final file = result.files.first;
         if (file.size > 5 * 1024 * 1024) {
-          _showSnackbar('Image size too large. Please select an image under 5MB.', Colors.orange);
+          FlutterToast.warning('Image size too large. Please select an image under 5MB.');
           return;
         }
 
         final extension = file.extension?.toLowerCase();
         if (extension != null && !['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].contains(extension)) {
-          _showSnackbar('Please select a valid image file (jpg, png, gif, etc.)', Colors.orange);
+          FlutterToast.warning('Please select a valid image file (jpg, png, gif, etc.)');
           return;
         }
 
@@ -297,9 +295,9 @@ class _TeachersScreenState extends State<TeachersScreen> {
               _imageBytes = file.bytes;
               _existingImageUrl = null;
             });
-            _showSnackbar('Image uploaded successfully!', Colors.green);
+            FlutterToast.success('Image uploaded successfully!');
           } else {
-            _showSnackbar('Failed to load image bytes', Colors.red);
+            FlutterToast.error('Failed to load image bytes');
           }
         } else {
           String? filePath = file.path;
@@ -308,14 +306,14 @@ class _TeachersScreenState extends State<TeachersScreen> {
               _imageFile = File(filePath);
               _existingImageUrl = null;
             });
-            _showSnackbar('Image uploaded successfully!', Colors.green);
+            FlutterToast.success('Image uploaded successfully!');
           } else {
-            _showSnackbar('Failed to get image file path', Colors.red);
+            FlutterToast.error('Failed to get image file path');
           }
         }
       }
     } catch (e) {
-      _showSnackbar('Error picking image: ${e.toString()}', Colors.red);
+      FlutterToast.error('Error picking image: ${e.toString()}');
     }
   }
 
@@ -323,7 +321,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
   Future<void> _addTeacher() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedSubjects.isEmpty) {
-      _showSnackbar('Please select at least one subject', Colors.orange);
+      FlutterToast.warning('Please select at least one subject');
       return;
     }
 
@@ -356,12 +354,12 @@ class _TeachersScreenState extends State<TeachersScreen> {
           _isAddingNew = false;
           _resetForm();
         });
-        _showSnackbar('Teacher added successfully!', Colors.green);
+        FlutterToast.success('Teacher added successfully!');
       } else {
-        _showSnackbar(controller.errorMessage.value, Colors.red);
+        FlutterToast.error(controller.errorMessage.value);
       }
     } catch (e) {
-      _showSnackbar('Failed to create teacher: $e', Colors.red);
+      FlutterToast.error('Failed to create teacher: $e');
     } finally {
       controller.isLoading.value = false;
     }
@@ -370,7 +368,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
   Future<void> _updateTeacher() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedSubjects.isEmpty) {
-      _showSnackbar('Please select at least one subject', Colors.orange);
+      FlutterToast.warning('Please select at least one subject');
       return;
     }
 
@@ -403,12 +401,12 @@ class _TeachersScreenState extends State<TeachersScreen> {
           _isEditing = false;
           _resetForm();
         });
-        _showSnackbar('Teacher updated successfully!', Colors.blue);
+        FlutterToast.success('Teacher updated successfully!');
       } else {
-        _showSnackbar(controller.errorMessage.value, Colors.red);
+        FlutterToast.error(controller.errorMessage.value);
       }
     } catch (e) {
-      _showSnackbar('Failed to update teacher: $e', Colors.red);
+      FlutterToast.error('Failed to update teacher: $e');
     } finally {
       controller.isLoading.value = false;
     }
@@ -437,12 +435,12 @@ class _TeachersScreenState extends State<TeachersScreen> {
                     _showRightPanel = false;
                     controller.selectedTeacher.value = null;
                   });
-                  _showSnackbar('Teacher deleted successfully!', Colors.red);
+                  FlutterToast.success('Teacher deleted successfully!');
                 } else {
-                  _showSnackbar(controller.errorMessage.value, Colors.red);
+                  FlutterToast.error(controller.errorMessage.value);
                 }
               } catch (e) {
-                _showSnackbar('Failed to delete teacher: $e', Colors.red);
+                FlutterToast.error('Failed to delete teacher: $e');
               } finally {
                 controller.isLoading.value = false;
               }
@@ -451,18 +449,6 @@ class _TeachersScreenState extends State<TeachersScreen> {
             child: const Text('Delete'),
           ),
         ],
-      ),
-    );
-  }
-
-  void _showSnackbar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        margin: const EdgeInsets.all(12),
       ),
     );
   }
@@ -1290,7 +1276,6 @@ class _TeachersScreenState extends State<TeachersScreen> {
           Expanded(
             child: InkWell(
               onTap: () {
-                // For View - Select teacher and show view panel
                 controller.selectTeacher(teacher);
                 setState(() {
                   _showRightPanel = true;
@@ -1353,7 +1338,6 @@ class _TeachersScreenState extends State<TeachersScreen> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Attendance Button
               Container(
                 decoration: BoxDecoration(
                   color: Colors.purple[50],
@@ -1381,7 +1365,6 @@ class _TeachersScreenState extends State<TeachersScreen> {
                 ),
               ),
               const SizedBox(width: 4),
-              // Edit Button
               Container(
                 decoration: BoxDecoration(
                   color: Colors.blue[50],
@@ -1391,9 +1374,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
                   onPressed: controller.isLoading.value
                       ? null
                       : () {
-                    // Load teacher data into form first
                     _loadTeacherToForm(teacher);
-                    // Then select and show edit panel
                     controller.selectTeacher(teacher);
                     setState(() {
                       _isEditing = true;
@@ -1412,7 +1393,6 @@ class _TeachersScreenState extends State<TeachersScreen> {
                 ),
               ),
               const SizedBox(width: 4),
-              // Delete Button
               Container(
                 decoration: BoxDecoration(
                   color: Colors.red[50],

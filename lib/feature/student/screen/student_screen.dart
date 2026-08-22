@@ -6,9 +6,10 @@ import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import '../../../core/widget/flutter_toast.dart';
 import '../model/student_model.dart';
 import '../repository/student_repository.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 
 // ============ ENUMS ============
 enum StudentFilter {
@@ -149,7 +150,7 @@ class _StudentScreenState extends State<StudentScreen> {
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      _showSnackbar('Failed to load students: $e', Colors.red);
+      FlutterToast.error('Failed to load students: $e');
     }
   }
 
@@ -195,9 +196,9 @@ class _StudentScreenState extends State<StudentScreen> {
         _resetForm();
       });
 
-      _showSnackbar('Student added successfully!', Colors.green);
+      FlutterToast.success('Student added successfully!');
     } catch (e) {
-      _showSnackbar('Failed to create student: $e', Colors.red);
+      FlutterToast.error('Failed to create student: $e');
     } finally {
       setState(() => _isSubmitting = false);
     }
@@ -250,9 +251,9 @@ class _StudentScreenState extends State<StudentScreen> {
         });
       }
 
-      _showSnackbar('Student updated successfully!', Colors.blue);
+      FlutterToast.success('Student updated successfully!');
     } catch (e) {
-      _showSnackbar('Failed to update student: $e', Colors.red);
+      FlutterToast.error('Failed to update student: $e');
     } finally {
       setState(() => _isSubmitting = false);
     }
@@ -283,10 +284,10 @@ class _StudentScreenState extends State<StudentScreen> {
                       _selectedStudent = null;
                     }
                   });
-                  _showSnackbar('Student deleted successfully!', Colors.red);
+                  FlutterToast.success('Student deleted successfully!');
                 }
               } catch (e) {
-                _showSnackbar('Failed to delete student: $e', Colors.red);
+                FlutterToast.error('Failed to delete student: $e');
               }
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -518,7 +519,7 @@ class _StudentScreenState extends State<StudentScreen> {
       if (result != null && result.files.isNotEmpty) {
         final file = result.files.first;
         if (file.size > 5 * 1024 * 1024) {
-          _showSnackbar('Image size too large. Please select an image under 5MB.', Colors.orange);
+          FlutterToast.warning('Image size too large. Please select an image under 5MB.');
           return;
         }
 
@@ -527,9 +528,9 @@ class _StudentScreenState extends State<StudentScreen> {
             setState(() {
               _imageBytes = file.bytes;
             });
-            // _showSnackbar('Image uploaded successfully!', Colors.green);
+            FlutterToast.success('Image uploaded successfully!');
           } else {
-            _showSnackbar('Failed to load image bytes', Colors.red);
+            FlutterToast.error('Failed to load image bytes');
           }
         } else {
           String? filePath = file.path;
@@ -537,27 +538,15 @@ class _StudentScreenState extends State<StudentScreen> {
             setState(() {
               _imageFile = File(filePath);
             });
-            _showSnackbar('Image uploaded successfully!', Colors.green);
+            FlutterToast.success('Image uploaded successfully!');
           } else {
-            _showSnackbar('Failed to get image file path', Colors.red);
+            FlutterToast.error('Failed to get image file path');
           }
         }
       }
     } catch (e) {
-      _showSnackbar('Error picking image: ${e.toString()}', Colors.red);
+      FlutterToast.error('Error picking image: ${e.toString()}');
     }
-  }
-
-  void _showSnackbar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        margin: const EdgeInsets.all(12),
-      ),
-    );
   }
 
   // ============ HELPERS ============

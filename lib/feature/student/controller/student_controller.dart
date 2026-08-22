@@ -1,9 +1,8 @@
-// lib/controllers/student_controller.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb, Uint8List;
-
+import '../../../core/widget/flutter_toast.dart';
 import '../model/student_model.dart';
 import '../repository/student_repository.dart';
 
@@ -75,13 +74,7 @@ class StudentController extends GetxController {
       final result = await _repository.getStudents();
       students.assignAll(result);
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to fetch students: $e',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      FlutterToast.error('Failed to fetch students: $e');
     } finally {
       isLoading.value = false;
     }
@@ -120,29 +113,16 @@ class StudentController extends GetxController {
       final created = await _repository.createStudent(
         student: student,
         studentProfile: studentProfileFile,
-        studentProfileBytes: studentProfileBytes, // Add this
+        studentProfileBytes: studentProfileBytes,
       );
 
       students.insert(0, created);
       _clearForm();
 
-      Get.snackbar(
-        'Success',
-        'Student created successfully',
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-
+      FlutterToast.success('Student created successfully');
       Get.back();
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to create student: $e',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      FlutterToast.error('Failed to create student: $e');
     } finally {
       isSubmitting.value = false;
     }
@@ -182,7 +162,7 @@ class StudentController extends GetxController {
         id: id,
         student: student,
         studentProfile: studentProfileFile,
-        studentProfileBytes: studentProfileBytes, // Add this
+        studentProfileBytes: studentProfileBytes,
       );
 
       final index = students.indexWhere((s) => s.id == id);
@@ -192,23 +172,10 @@ class StudentController extends GetxController {
 
       _clearForm();
 
-      Get.snackbar(
-        'Success',
-        'Student updated successfully',
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-
+      FlutterToast.success('Student updated successfully');
       Get.back();
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to update student: $e',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      FlutterToast.error('Failed to update student: $e');
     } finally {
       isSubmitting.value = false;
     }
@@ -241,23 +208,11 @@ class StudentController extends GetxController {
         final success = await _repository.deleteStudent(id);
         if (success) {
           students.removeWhere((s) => s.id == id);
-          Get.snackbar(
-            'Success',
-            'Student deleted successfully',
-            backgroundColor: Colors.green,
-            colorText: Colors.white,
-            snackPosition: SnackPosition.BOTTOM,
-          );
+          FlutterToast.success('Student deleted successfully');
         }
       }
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to delete student: $e',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      FlutterToast.error('Failed to delete student: $e');
     } finally {
       isLoading.value = false;
     }
@@ -322,35 +277,17 @@ class StudentController extends GetxController {
 
   bool _validateForm() {
     if (firstNameController.text.trim().isEmpty) {
-      Get.snackbar(
-        'Validation Error',
-        'First name is required',
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      FlutterToast.warning('First name is required');
       return false;
     }
 
     if (dobController.text.trim().isEmpty) {
-      Get.snackbar(
-        'Validation Error',
-        'Date of birth is required',
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      FlutterToast.warning('Date of birth is required');
       return false;
     }
 
     if (parentPhoneController.text.trim().isEmpty) {
-      Get.snackbar(
-        'Validation Error',
-        'Parent phone is required',
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      FlutterToast.warning('Parent phone is required');
       return false;
     }
 
