@@ -1,3 +1,4 @@
+// lib/controllers/student_controller.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'dart:io';
@@ -34,10 +35,11 @@ class StudentController extends GetxController {
   final feeStatusController = TextEditingController();
   final feeAmountController = TextEditingController();
   final paidAmountController = TextEditingController();
+  final studentIdCardController = TextEditingController();
 
   // File for student profile
   File? studentProfileFile;
-  Uint8List? studentProfileBytes; // For Web support
+  Uint8List? studentProfileBytes;
 
   @override
   void onInit() {
@@ -65,6 +67,7 @@ class StudentController extends GetxController {
     feeStatusController.dispose();
     feeAmountController.dispose();
     paidAmountController.dispose();
+    studentIdCardController.dispose();
     super.onClose();
   }
 
@@ -106,10 +109,10 @@ class StudentController extends GetxController {
         feeAmount: feeAmountController.text.trim().isEmpty ? '0.00' : feeAmountController.text.trim(),
         paidAmount: paidAmountController.text.trim().isEmpty ? '0.00' : paidAmountController.text.trim(),
         checkBox: true,
-        schoolType: 'School A',
+        schoolType: 'A',
+        studentIdCard: studentIdCardController.text.trim(),
       );
 
-      // Pass both File and Bytes
       final created = await _repository.createStudent(
         student: student,
         studentProfile: studentProfileFile,
@@ -154,10 +157,10 @@ class StudentController extends GetxController {
         feeAmount: feeAmountController.text.trim().isEmpty ? '0.00' : feeAmountController.text.trim(),
         paidAmount: paidAmountController.text.trim().isEmpty ? '0.00' : paidAmountController.text.trim(),
         checkBox: true,
-        schoolType: 'School A',
+        schoolType: 'A',
+        studentIdCard: studentIdCardController.text.trim(),
       );
 
-      // Pass both File and Bytes
       final updated = await _repository.updateStudent(
         id: id,
         student: student,
@@ -239,6 +242,7 @@ class StudentController extends GetxController {
     feeStatusController.text = student.feeStatus;
     feeAmountController.text = student.feeAmount;
     paidAmountController.text = student.paidAmount;
+    studentIdCardController.text = student.studentIdCard ?? '';
   }
 
   void setProfileImage(File file) {
@@ -270,6 +274,7 @@ class StudentController extends GetxController {
     feeStatusController.clear();
     feeAmountController.clear();
     paidAmountController.clear();
+    studentIdCardController.clear();
     studentProfileFile = null;
     studentProfileBytes = null;
     selectedStudent.value = null;

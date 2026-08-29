@@ -1,3 +1,4 @@
+// lib/feature/teachers/screen/teachers_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -56,7 +57,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
   final _formKey = GlobalKey<FormState>();
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
-  final _teacherIdController = TextEditingController();
+  final _teacherIdCardController = TextEditingController();
   final _dobController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -65,11 +66,12 @@ class _TeachersScreenState extends State<TeachersScreen> {
   final _qualificationController = TextEditingController();
   final _experienceController = TextEditingController();
   final _joinDateController = TextEditingController();
+  final _salaryController = TextEditingController();
 
   // ============ FORM STATE ============
   String _selectedGender = 'Male';
-  String _selectedStatus = 'Active';
-  String _selectedSchoolForm = 'School A';
+  bool _checkBox = false;
+  String _selectedSchoolForm = 'A';
   List<String> _selectedSubjects = [];
   File? _imageFile;
   Uint8List? _imageBytes;
@@ -85,8 +87,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
     'Hindi', 'Social Science', 'Geography'
   ];
   final List<String> _genderList = ['Male', 'Female', 'Other'];
-  final List<String> _statusList = ['Active', 'Inactive', 'On Leave'];
-  final List<String> _schoolList = ['School A', 'School B'];
+  final List<String> _schoolList = ['A', 'B'];
 
   bool get _isWeb => kIsWeb;
 
@@ -101,7 +102,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
   void dispose() {
     _firstNameController.dispose();
     _lastNameController.dispose();
-    _teacherIdController.dispose();
+    _teacherIdCardController.dispose();
     _dobController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
@@ -110,6 +111,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
     _qualificationController.dispose();
     _experienceController.dispose();
     _joinDateController.dispose();
+    _salaryController.dispose();
     super.dispose();
   }
 
@@ -181,9 +183,9 @@ class _TeachersScreenState extends State<TeachersScreen> {
     var filtered = controller.teachers.toList();
 
     if (_currentSchoolFilter == SchoolFilter.schoolA) {
-      filtered = filtered.where((teacher) => teacher.school == 'School A').toList();
+      filtered = filtered.where((teacher) => teacher.school == 'A').toList();
     } else if (_currentSchoolFilter == SchoolFilter.schoolB) {
-      filtered = filtered.where((teacher) => teacher.school == 'School B').toList();
+      filtered = filtered.where((teacher) => teacher.school == 'B').toList();
     }
 
     if (_currentFilter != TeacherFilter.all) {
@@ -223,7 +225,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
   void _resetForm() {
     _firstNameController.clear();
     _lastNameController.clear();
-    _teacherIdController.clear();
+    _teacherIdCardController.clear();
     _dobController.clear();
     _emailController.clear();
     _phoneController.clear();
@@ -232,10 +234,11 @@ class _TeachersScreenState extends State<TeachersScreen> {
     _qualificationController.clear();
     _experienceController.clear();
     _joinDateController.clear();
+    _salaryController.clear();
     _selectedSubjects = [];
     _selectedGender = 'Male';
-    _selectedStatus = 'Active';
-    _selectedSchoolForm = 'School A';
+    _checkBox = false;
+    _selectedSchoolForm = 'A';
     _imageFile = null;
     _imageBytes = null;
     _editingTeacherId = null;
@@ -243,11 +246,11 @@ class _TeachersScreenState extends State<TeachersScreen> {
     _formKey.currentState?.reset();
   }
 
-  // Load teacher data into form without trying to convert URL to File
+  // Load teacher data into form
   void _loadTeacherToForm(TeacherModel teacher) {
     _firstNameController.text = teacher.firstName;
     _lastNameController.text = teacher.lastName;
-    _teacherIdController.text = teacher.teacherId ?? '';
+    _teacherIdCardController.text = teacher.teacherIdCard ?? '';
     _dobController.text = teacher.dob ?? '';
     _emailController.text = teacher.email ?? '';
     _phoneController.text = teacher.phone ?? '';
@@ -256,10 +259,11 @@ class _TeachersScreenState extends State<TeachersScreen> {
     _qualificationController.text = teacher.qualification ?? '';
     _experienceController.text = teacher.experience?.toString() ?? '';
     _joinDateController.text = teacher.joinDate ?? '';
+    _salaryController.text = teacher.salary ?? '';
     _selectedSubjects = List.from(teacher.subjects ?? []);
     _selectedGender = teacher.gender ?? 'Male';
-    _selectedStatus = teacher.status;
-    _selectedSchoolForm = teacher.school;
+    _checkBox = teacher.checkBox;
+    _selectedSchoolForm = teacher.schoolType ?? 'A';
     _editingTeacherId = teacher.id;
 
     _existingImageUrl = teacher.teacherProfile;
@@ -317,6 +321,42 @@ class _TeachersScreenState extends State<TeachersScreen> {
     }
   }
 
+  // ============ HELPER VALIDATION METHODS ============
+  bool _isValidDate(String date) {
+    try {
+      if (date.isEmpty) return false;
+      final parts = date.split('-');
+      if (parts.length != 3) return false;
+      if (parts[0].length != 4) return false;
+      if (parts[1].length != 2) return false;
+      if (parts[2].length != 2) return false;
+      DateTime.parse(date);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  bool _isValidEmail(String email) {
+    if (email.isEmpty) return false;
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+  }
+
+  bool _isValidPhone(String phone) {
+    if (phone.isEmpty) return false;
+    return RegExp(r'^[0-9]{10}$').hasMatch(phone);
+  }
+
+  bool _isValidNumber(String value) {
+    if (value.isEmpty) return true;
+    return RegExp(r'^[0-9]+$').hasMatch(value);
+  }
+
+  bool _isValidSalary(String value) {
+    if (value.isEmpty) return true;
+    return RegExp(r'^[0-9]+(\.[0-9]{1,2})?$').hasMatch(value);
+  }
+
   // ============ CRUD OPERATIONS ============
   Future<void> _addTeacher() async {
     if (!_formKey.currentState!.validate()) return;
@@ -328,22 +368,102 @@ class _TeachersScreenState extends State<TeachersScreen> {
     controller.isLoading.value = true;
 
     try {
+      // Validate DOB format
+      String? dobValue;
+      if (_dobController.text.trim().isNotEmpty) {
+        dobValue = _dobController.text.trim();
+        if (!_isValidDate(dobValue)) {
+          FlutterToast.warning('Date of Birth must be in YYYY-MM-DD format');
+          controller.isLoading.value = false;
+          return;
+        }
+      }
+
+      // Validate Join Date format
+      String? joinDateValue;
+      if (_joinDateController.text.trim().isNotEmpty) {
+        joinDateValue = _joinDateController.text.trim();
+        if (!_isValidDate(joinDateValue)) {
+          FlutterToast.warning('Join Date must be in YYYY-MM-DD format');
+          controller.isLoading.value = false;
+          return;
+        }
+      }
+
+      // Validate Email
+      String? emailValue;
+      if (_emailController.text.trim().isNotEmpty) {
+        emailValue = _emailController.text.trim();
+        if (!_isValidEmail(emailValue)) {
+          FlutterToast.warning('Please enter a valid email address');
+          controller.isLoading.value = false;
+          return;
+        }
+      }
+
+      // Validate Phone
+      String? phoneValue;
+      if (_phoneController.text.trim().isNotEmpty) {
+        phoneValue = _phoneController.text.trim();
+        if (!_isValidPhone(phoneValue)) {
+          FlutterToast.warning('Phone number must be 10 digits');
+          controller.isLoading.value = false;
+          return;
+        }
+      }
+
+      // Validate Alt Phone
+      String? altPhoneValue;
+      if (_altPhoneController.text.trim().isNotEmpty) {
+        altPhoneValue = _altPhoneController.text.trim();
+        if (!_isValidPhone(altPhoneValue)) {
+          FlutterToast.warning('Alternative phone number must be 10 digits');
+          controller.isLoading.value = false;
+          return;
+        }
+      }
+
+      // Validate Experience
+      String? experienceValue;
+      if (_experienceController.text.trim().isNotEmpty) {
+        experienceValue = _experienceController.text.trim();
+        if (!_isValidNumber(experienceValue)) {
+          FlutterToast.warning('Experience must be a valid number');
+          controller.isLoading.value = false;
+          return;
+        }
+      }
+
+      // Validate Salary
+      String? salaryValue;
+      if (_salaryController.text.trim().isNotEmpty) {
+        salaryValue = _salaryController.text.trim();
+        if (!_isValidSalary(salaryValue)) {
+          FlutterToast.warning('Salary must be a valid number (e.g., 12000 or 12000.50)');
+          controller.isLoading.value = false;
+          return;
+        }
+      }
+
       final success = await controller.createTeacher(
         firstName: _firstNameController.text.trim(),
         lastName: _lastNameController.text.trim(),
-        teacherId: _teacherIdController.text.trim().isNotEmpty ? _teacherIdController.text.trim() : null,
+        teacherIdCard: _teacherIdCardController.text.trim().isNotEmpty
+            ? _teacherIdCardController.text.trim()
+            : null,
         teacherProfile: _imageFile,
+        teacherProfileBytes: _imageBytes,
         gender: _selectedGender,
-        dob: _dobController.text.trim().isNotEmpty ? _dobController.text.trim() : null,
-        phone: _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : null,
-        altPhone: _altPhoneController.text.trim().isNotEmpty ? _altPhoneController.text.trim() : null,
-        email: _emailController.text.trim().isNotEmpty ? _emailController.text.trim() : null,
+        dob: dobValue,
+        phone: phoneValue,
+        altPhone: altPhoneValue,
+        email: emailValue,
         address: _addressController.text.trim().isNotEmpty ? _addressController.text.trim() : null,
         qualification: _qualificationController.text.trim().isNotEmpty ? _qualificationController.text.trim() : null,
-        experience: _experienceController.text.trim().isNotEmpty ? int.tryParse(_experienceController.text.trim()) : null,
-        salary: 0,
-        joinDate: _joinDateController.text.trim().isNotEmpty ? _joinDateController.text.trim() : null,
-        checkBox: _selectedStatus == 'Active',
+        experience: experienceValue != null ? int.tryParse(experienceValue) : null,
+        salary: salaryValue != null ? double.tryParse(salaryValue) : null,
+        joinDate: joinDateValue,
+        checkBox: _checkBox,
         subjects: _selectedSubjects.isNotEmpty ? _selectedSubjects : null,
         schoolType: _selectedSchoolForm,
       );
@@ -375,23 +495,103 @@ class _TeachersScreenState extends State<TeachersScreen> {
     controller.isLoading.value = true;
 
     try {
+      // Validate DOB format
+      String? dobValue;
+      if (_dobController.text.trim().isNotEmpty) {
+        dobValue = _dobController.text.trim();
+        if (!_isValidDate(dobValue)) {
+          FlutterToast.warning('Date of Birth must be in YYYY-MM-DD format');
+          controller.isLoading.value = false;
+          return;
+        }
+      }
+
+      // Validate Join Date format
+      String? joinDateValue;
+      if (_joinDateController.text.trim().isNotEmpty) {
+        joinDateValue = _joinDateController.text.trim();
+        if (!_isValidDate(joinDateValue)) {
+          FlutterToast.warning('Join Date must be in YYYY-MM-DD format');
+          controller.isLoading.value = false;
+          return;
+        }
+      }
+
+      // Validate Email
+      String? emailValue;
+      if (_emailController.text.trim().isNotEmpty) {
+        emailValue = _emailController.text.trim();
+        if (!_isValidEmail(emailValue)) {
+          FlutterToast.warning('Please enter a valid email address');
+          controller.isLoading.value = false;
+          return;
+        }
+      }
+
+      // Validate Phone
+      String? phoneValue;
+      if (_phoneController.text.trim().isNotEmpty) {
+        phoneValue = _phoneController.text.trim();
+        if (!_isValidPhone(phoneValue)) {
+          FlutterToast.warning('Phone number must be 10 digits');
+          controller.isLoading.value = false;
+          return;
+        }
+      }
+
+      // Validate Alt Phone
+      String? altPhoneValue;
+      if (_altPhoneController.text.trim().isNotEmpty) {
+        altPhoneValue = _altPhoneController.text.trim();
+        if (!_isValidPhone(altPhoneValue)) {
+          FlutterToast.warning('Alternative phone number must be 10 digits');
+          controller.isLoading.value = false;
+          return;
+        }
+      }
+
+      // Validate Experience
+      String? experienceValue;
+      if (_experienceController.text.trim().isNotEmpty) {
+        experienceValue = _experienceController.text.trim();
+        if (!_isValidNumber(experienceValue)) {
+          FlutterToast.warning('Experience must be a valid number');
+          controller.isLoading.value = false;
+          return;
+        }
+      }
+
+      // Validate Salary
+      String? salaryValue;
+      if (_salaryController.text.trim().isNotEmpty) {
+        salaryValue = _salaryController.text.trim();
+        if (!_isValidSalary(salaryValue)) {
+          FlutterToast.warning('Salary must be a valid number (e.g., 12000 or 12000.50)');
+          controller.isLoading.value = false;
+          return;
+        }
+      }
+
       final success = await controller.updateTeacher(
         id: _editingTeacherId!,
         firstName: _firstNameController.text.trim(),
         lastName: _lastNameController.text.trim(),
-        teacherId: _teacherIdController.text.trim().isNotEmpty ? _teacherIdController.text.trim() : null,
+        teacherIdCard: _teacherIdCardController.text.trim().isNotEmpty
+            ? _teacherIdCardController.text.trim()
+            : null,
         teacherProfile: _imageFile,
+        teacherProfileBytes: _imageBytes,
         gender: _selectedGender,
-        dob: _dobController.text.trim().isNotEmpty ? _dobController.text.trim() : null,
-        phone: _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : null,
-        altPhone: _altPhoneController.text.trim().isNotEmpty ? _altPhoneController.text.trim() : null,
-        email: _emailController.text.trim().isNotEmpty ? _emailController.text.trim() : null,
+        dob: dobValue,
+        phone: phoneValue,
+        altPhone: altPhoneValue,
+        email: emailValue,
         address: _addressController.text.trim().isNotEmpty ? _addressController.text.trim() : null,
         qualification: _qualificationController.text.trim().isNotEmpty ? _qualificationController.text.trim() : null,
-        experience: _experienceController.text.trim().isNotEmpty ? int.tryParse(_experienceController.text.trim()) : null,
-        salary: 0,
-        joinDate: _joinDateController.text.trim().isNotEmpty ? _joinDateController.text.trim() : null,
-        checkBox: _selectedStatus == 'Active',
+        experience: experienceValue != null ? int.tryParse(experienceValue) : null,
+        salary: salaryValue != null ? double.tryParse(salaryValue) : null,
+        joinDate: joinDateValue,
+        checkBox: _checkBox,
         subjects: _selectedSubjects.isNotEmpty ? _selectedSubjects : null,
         schoolType: _selectedSchoolForm,
       );
@@ -429,7 +629,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
               Navigator.pop(context);
               controller.isLoading.value = true;
               try {
-                final success = await controller.deleteTeacher(teacher.id);
+                final success = await controller.deleteTeacher(teacher.id!);
                 if (success) {
                   setState(() {
                     _showRightPanel = false;
@@ -465,8 +665,8 @@ class _TeachersScreenState extends State<TeachersScreen> {
 
   Color _getSchoolColor(String school) {
     switch (school) {
-      case 'School A': return Colors.blue;
-      case 'School B': return Colors.green;
+      case 'A': return Colors.blue;
+      case 'B': return Colors.green;
       default: return Colors.grey;
     }
   }
@@ -1069,7 +1269,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              '👨‍🏫 ${_totalTeachers} Total Teachers',
+              '👨‍🏫 $_totalTeachers Total Teachers',
               style: TextStyle(
                 fontSize: 13,
                 color: Colors.grey[400],
@@ -1235,7 +1435,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
   // ============ TEACHER CARD ============
   Widget _buildTeacherCard(TeacherModel teacher) {
     final isSelected = controller.selectedTeacher.value?.id == teacher.id;
-    final schoolColor = _getSchoolColor(teacher.school);
+    final schoolColor = _getSchoolColor(teacher.schoolType ?? 'A');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -1301,20 +1501,31 @@ class _TeachersScreenState extends State<TeachersScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: _getStatusColor(teacher.status).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          teacher.status,
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w600,
-                            color: _getStatusColor(teacher.status),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            teacher.checkBox ? Icons.check_circle : Icons.cancel,
+                            size: 12,
+                            color: teacher.checkBox ? Colors.green : Colors.red,
                           ),
-                        ),
+                          const SizedBox(width: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: _getStatusColor(teacher.status).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              teacher.status,
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w600,
+                                color: _getStatusColor(teacher.status),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -1323,7 +1534,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
                     spacing: 8,
                     runSpacing: 2,
                     children: [
-                      _buildInfoText(Icons.school, teacher.school, color: schoolColor),
+                      _buildInfoText(Icons.school, teacher.schoolType ?? 'A', color: schoolColor),
                       if (teacher.subjects != null && teacher.subjects!.isNotEmpty)
                         _buildInfoText(Icons.book, teacher.subjects!.take(2).join(', ')),
                       if (teacher.email != null)
@@ -1464,7 +1675,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
     final teacher = controller.selectedTeacher.value;
     if (teacher == null) return const SizedBox();
 
-    final schoolColor = _getSchoolColor(teacher.school);
+    final schoolColor = _getSchoolColor(teacher.schoolType ?? 'A');
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -1523,7 +1734,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
                               Icon(Icons.school, size: 12, color: schoolColor),
                               const SizedBox(width: 4),
                               Text(
-                                teacher.school,
+                                teacher.schoolType ?? 'A',
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
@@ -1537,16 +1748,26 @@ class _TeachersScreenState extends State<TeachersScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: _getStatusColor(teacher.status).withOpacity(0.1),
+                            color: teacher.checkBox ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Text(
-                            teacher.status,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: _getStatusColor(teacher.status),
-                            ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                teacher.checkBox ? Icons.check_circle : Icons.cancel,
+                                size: 12,
+                                color: teacher.checkBox ? Colors.green : Colors.red,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                teacher.checkBox ? 'Active' : 'Inactive',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: teacher.checkBox ? Colors.green : Colors.red,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -1575,13 +1796,13 @@ class _TeachersScreenState extends State<TeachersScreen> {
           const SizedBox(height: 20),
           const Divider(),
           const SizedBox(height: 16),
-          _buildDetailRow('🏫 School', teacher.school, color: schoolColor, isBold: true),
+          _buildDetailRow('🏫 School', teacher.schoolType ?? 'A', color: schoolColor, isBold: true),
           _buildDetailRow('📛 Name', teacher.fullName),
           _buildDetailRow('🎂 DOB', teacher.dob ?? 'N/A'),
           _buildDetailRow('⚧ Gender', teacher.gender ?? 'N/A'),
           _buildDetailRow('📧 Email', teacher.email ?? 'N/A'),
           _buildDetailRow('📱 Phone', teacher.phone ?? 'N/A'),
-          if (teacher.altPhone != null)
+          if (teacher.altPhone != null && teacher.altPhone!.isNotEmpty)
             _buildDetailRow('📱 Alt Phone', teacher.altPhone!),
           _buildDetailRow('📍 Address', teacher.address ?? 'N/A'),
           const SizedBox(height: 12),
@@ -1591,6 +1812,9 @@ class _TeachersScreenState extends State<TeachersScreen> {
           _buildDetailRow('📚 Subjects', teacher.subjects?.join(', ') ?? 'N/A'),
           _buildDetailRow('💼 Experience', teacher.experienceStr),
           _buildDetailRow('📅 Join Date', teacher.joinDate ?? 'N/A'),
+          _buildDetailRow('💰 Salary', teacher.salary != null ? '₹${teacher.salary}' : 'N/A'),
+          _buildDetailRow('📌 Status', teacher.checkBox ? 'Active ✅' : 'Inactive ❌',
+              color: teacher.checkBox ? Colors.green : Colors.red, isBold: true),
           _buildDetailRow('📅 Created', _formatDate(teacher.createdAt)),
           _buildDetailRow('📅 Updated', _formatDate(teacher.updatedAt)),
           const SizedBox(height: 20),
@@ -2259,9 +2483,13 @@ class _TeachersScreenState extends State<TeachersScreen> {
             child: _buildPhotoUpload(),
           ),
           const SizedBox(height: 16),
-          _buildFormTextField(_teacherIdController, 'Teacher ID', Icons.badge,
+
+          // Teacher ID Card Field
+          _buildFormTextField(_teacherIdCardController, 'Teacher ID Card', Icons.badge,
               hint: 'Optional - Auto generated if empty'),
           const SizedBox(height: 8),
+
+          // School Information
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -2283,7 +2511,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
                 ),
                 const Spacer(),
                 SizedBox(
-                  width: 140,
+                  width: 120,
                   child: _buildDropdownField('', _schoolList, _selectedSchoolForm, (value) {
                     setState(() => _selectedSchoolForm = value!);
                   }, isCompact: true),
@@ -2292,6 +2520,8 @@ class _TeachersScreenState extends State<TeachersScreen> {
             ),
           ),
           const SizedBox(height: 12),
+
+          // Personal Information
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -2318,12 +2548,12 @@ class _TeachersScreenState extends State<TeachersScreen> {
           Row(
             children: [
               Expanded(
-                child: _buildFormTextField(_firstNameController, 'First Name', Icons.person_outline,
+                child: _buildFormTextField(_firstNameController, 'First Name *', Icons.person_outline,
                     required: true),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _buildFormTextField(_lastNameController, 'Last Name', Icons.person_outline,
+                child: _buildFormTextField(_lastNameController, 'Last Name *', Icons.person_outline,
                     required: true),
               ),
             ],
@@ -2332,18 +2562,20 @@ class _TeachersScreenState extends State<TeachersScreen> {
           Row(
             children: [
               Expanded(
-                child: _buildFormTextField(_dobController, 'Date of Birth', Icons.calendar_today,
+                child: _buildFormTextField(_dobController, 'Date of Birth (YYYY-MM-DD)', Icons.calendar_today,
                     hint: 'YYYY-MM-DD'),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _buildDropdownField('Gender', _genderList, _selectedGender, (value) {
+                child: _buildDropdownField('Gender *', _genderList, _selectedGender, (value) {
                   setState(() => _selectedGender = value!);
                 }),
               ),
             ],
           ),
           const SizedBox(height: 12),
+
+          // Contact Information
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -2372,11 +2604,12 @@ class _TeachersScreenState extends State<TeachersScreen> {
           Row(
             children: [
               Expanded(
-                child: _buildFormTextField(_phoneController, 'Primary Phone', Icons.phone),
+                child: _buildFormTextField(_phoneController, 'Primary Phone * (10 digits)', Icons.phone,
+                    required: true),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _buildFormTextField(_altPhoneController, 'Alt Phone', Icons.phone_android),
+                child: _buildFormTextField(_altPhoneController, 'Alt Phone (10 digits)', Icons.phone_android),
               ),
             ],
           ),
@@ -2384,6 +2617,8 @@ class _TeachersScreenState extends State<TeachersScreen> {
           _buildFormTextField(_addressController, 'Address', Icons.location_on,
               maxLines: 2),
           const SizedBox(height: 12),
+
+          // Professional Information
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -2416,14 +2651,26 @@ class _TeachersScreenState extends State<TeachersScreen> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _buildFormTextField(_joinDateController, 'Join Date', Icons.event,
+                child: _buildFormTextField(_joinDateController, 'Join Date (YYYY-MM-DD)', Icons.event,
                     hint: 'YYYY-MM-DD'),
               ),
             ],
           ),
           const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildFormTextField(_salaryController, 'Salary', Icons.money),
+              ),
+              const SizedBox(width: 8),
+              Expanded(child: const SizedBox()),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // Subjects
           const Text(
-            'Subjects',
+            'Subjects *',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -2474,6 +2721,8 @@ class _TeachersScreenState extends State<TeachersScreen> {
             ),
           ),
           const SizedBox(height: 12),
+
+          // Status Information with Checkbox
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -2493,13 +2742,33 @@ class _TeachersScreenState extends State<TeachersScreen> {
                     color: Colors.orange[700],
                   ),
                 ),
+                const Spacer(),
+                Row(
+                  children: [
+                    Checkbox(
+                      value: _checkBox,
+                      onChanged: controller.isLoading.value
+                          ? null
+                          : (value) {
+                        setState(() {
+                          _checkBox = value ?? false;
+                        });
+                      },
+                      activeColor: Colors.purple[700],
+                    ),
+                    Text(
+                      _checkBox ? 'Active' : 'Inactive',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: _checkBox ? Colors.green : Colors.red,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 8),
-          _buildDropdownField('Status', _statusList, _selectedStatus, (value) {
-            setState(() => _selectedStatus = value!);
-          }),
         ],
       ),
     );

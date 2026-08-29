@@ -22,6 +22,7 @@ class StudentModel {
   final String paidAmount;
   final bool checkBox;
   final String? schoolType;
+  final String? studentIdCard;
   final String? createdAt;
   final String? updatedAt;
 
@@ -48,6 +49,7 @@ class StudentModel {
     required this.paidAmount,
     this.checkBox = false,
     this.schoolType,
+    this.studentIdCard,
     this.createdAt,
     this.updatedAt,
   });
@@ -77,6 +79,7 @@ class StudentModel {
       paidAmount: json['paid_amount']?.toString() ?? '0.00',
       checkBox: json['check_box'] ?? false,
       schoolType: json['school_type'] as String?,
+      studentIdCard: json['student_id_card'] as String?,
       createdAt: json['created_at']?.toString(),
       updatedAt: json['updated_at']?.toString(),
     );
@@ -105,6 +108,63 @@ class StudentModel {
       'paid_amount': paidAmount,
       'check_box': checkBox,
       'school_type': schoolType ?? '',
+      'student_id_card': studentIdCard ?? '',
     };
+  }
+
+  StudentModel copyWith({
+    int? id,
+    String? studentProfile,
+    String? firstName,
+    String? middleName,
+    String? lastName,
+    String? dob,
+    String? gender,
+    String? fatherName,
+    String? motherName,
+    String? parentPhone,
+    String? alternativePhone,
+    String? adharNumber,
+    String? sssmid,
+    String? studentClass,
+    String? rollNumber,
+    String? address,
+    String? casteCategory,
+    String? feeStatus,
+    String? feeAmount,
+    String? paidAmount,
+    bool? checkBox,
+    String? schoolType,
+    String? studentIdCard,
+    String? createdAt,
+    String? updatedAt,
+  }) {
+    return StudentModel(
+      id: id ?? this.id,
+      studentProfile: studentProfile ?? this.studentProfile,
+      firstName: firstName ?? this.firstName,
+      middleName: middleName ?? this.middleName,
+      lastName: lastName ?? this.lastName,
+      dob: dob ?? this.dob,
+      gender: gender ?? this.gender,
+      fatherName: fatherName ?? this.fatherName,
+      motherName: motherName ?? this.motherName,
+      parentPhone: parentPhone ?? this.parentPhone,
+      alternativePhone: alternativePhone ?? this.alternativePhone,
+      adharNumber: adharNumber ?? this.adharNumber,
+      sssmid: sssmid ?? this.sssmid,
+      studentClass: studentClass ?? this.studentClass,
+      rollNumber: rollNumber ?? this.rollNumber,
+      address: address ?? this.address,
+      casteCategory: casteCategory ?? this.casteCategory,
+      feeStatus: feeStatus ?? this.feeStatus,
+      feeAmount: feeAmount ?? this.feeAmount,
+      paidAmount: paidAmount ?? this.paidAmount,
+      checkBox: checkBox ?? this.checkBox,
+      schoolType: schoolType ?? this.schoolType,
+      studentIdCard: studentIdCard ?? this.studentIdCard,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
   }
 }

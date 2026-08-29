@@ -30,7 +30,7 @@ class StudentRepository {
   Future<StudentModel> createStudent({
     required StudentModel student,
     File? studentProfile,
-    Uint8List? studentProfileBytes, // For Web support
+    Uint8List? studentProfileBytes,
   }) async {
     try {
       FormData formData = FormData.fromMap({
@@ -54,11 +54,11 @@ class StudentRepository {
         'paid_amount': student.paidAmount,
         'check_box': student.checkBox,
         'school_type': student.schoolType ?? '',
+        'student_id_card': student.studentIdCard ?? '',
       });
 
       // Handle file upload based on platform
       if (kIsWeb) {
-        // Web: Use bytes directly
         if (studentProfileBytes != null && studentProfileBytes.isNotEmpty) {
           final multipartFile = MultipartFile.fromBytes(
             studentProfileBytes,
@@ -66,12 +66,8 @@ class StudentRepository {
             contentType: DioMediaType.parse('image/jpeg'),
           );
           formData.files.add(MapEntry('student_profile', multipartFile));
-          print('✅ Web: Added image bytes (${studentProfileBytes.length} bytes)');
-        } else {
-          print('⚠️ Web: No image bytes provided');
         }
       } else {
-        // Mobile/Desktop: Use file path
         if (studentProfile != null) {
           final multipartFile = await MultipartFile.fromFile(
             studentProfile.path,
@@ -79,13 +75,8 @@ class StudentRepository {
             contentType: DioMediaType.parse('image/jpeg'),
           );
           formData.files.add(MapEntry('student_profile', multipartFile));
-          print('✅ Mobile: Added image from path: ${studentProfile.path}');
-        } else {
-          print('⚠️ Mobile: No image file provided');
         }
       }
-
-      print('📤 Creating Student - Fields: ${formData.fields.length}, Files: ${formData.files.length}');
 
       final response = await dio.post(
         'v1/school/student/create/',
@@ -97,19 +88,15 @@ class StudentRepository {
         ),
       );
 
-      print('📥 Response Status: ${response.statusCode}');
-      print('📥 Response Data: ${response.data}');
-
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data;
         if (data['success'] == true) {
-          return StudentModel.fromApiJson(data['data'] ?? {});
+          return StudentModel.fromApiJson(data['data']);
         }
         throw Exception('API returned error: ${data['message']}');
       }
       throw Exception('Failed to create student: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error: $e');
       throw Exception('Error: $e');
     }
   }
@@ -119,7 +106,7 @@ class StudentRepository {
     required int id,
     required StudentModel student,
     File? studentProfile,
-    Uint8List? studentProfileBytes, // For Web support
+    Uint8List? studentProfileBytes,
   }) async {
     try {
       FormData formData = FormData.fromMap({
@@ -143,11 +130,11 @@ class StudentRepository {
         'paid_amount': student.paidAmount,
         'check_box': student.checkBox,
         'school_type': student.schoolType ?? '',
+        'student_id_card': student.studentIdCard ?? '',
       });
 
       // Handle file upload based on platform
       if (kIsWeb) {
-        // Web: Use bytes directly
         if (studentProfileBytes != null && studentProfileBytes.isNotEmpty) {
           final multipartFile = MultipartFile.fromBytes(
             studentProfileBytes,
@@ -155,12 +142,8 @@ class StudentRepository {
             contentType: DioMediaType.parse('image/jpeg'),
           );
           formData.files.add(MapEntry('student_profile', multipartFile));
-          print('✅ Web: Updated image bytes (${studentProfileBytes.length} bytes)');
-        } else {
-          print('⚠️ Web: No image bytes provided for update');
         }
       } else {
-        // Mobile/Desktop: Use file path
         if (studentProfile != null) {
           final multipartFile = await MultipartFile.fromFile(
             studentProfile.path,
@@ -168,13 +151,8 @@ class StudentRepository {
             contentType: DioMediaType.parse('image/jpeg'),
           );
           formData.files.add(MapEntry('student_profile', multipartFile));
-          print('✅ Mobile: Updated image from path: ${studentProfile.path}');
-        } else {
-          print('⚠️ Mobile: No image file provided for update');
         }
       }
-
-      print('📤 Updating Student ID: $id - Fields: ${formData.fields.length}, Files: ${formData.files.length}');
 
       final response = await dio.put(
         'v1/school/student/$id/',
@@ -186,19 +164,15 @@ class StudentRepository {
         ),
       );
 
-      print('📥 Response Status: ${response.statusCode}');
-      print('📥 Response Data: ${response.data}');
-
       if (response.statusCode == 200) {
         final data = response.data;
         if (data['success'] == true) {
-          return StudentModel.fromApiJson(data['data'] ?? {});
+          return StudentModel.fromApiJson(data['data']);
         }
         throw Exception('API returned error: ${data['message']}');
       }
       throw Exception('Failed to update student: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error: $e');
       throw Exception('Error: $e');
     }
   }

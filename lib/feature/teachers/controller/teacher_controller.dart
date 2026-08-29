@@ -1,5 +1,7 @@
+// lib/controllers/teacher_controller.dart
 import 'package:get/get.dart';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb, Uint8List;
 import '../model/teacher_model.dart';
 import '../repository/teacher_repository.dart';
 
@@ -48,13 +50,12 @@ class TeacherController extends GetxController {
   Future<bool> createTeacher({
     required String firstName,
     required String lastName,
-    String? teacherId,
-    File? teacherProfile,
     String? gender,
     String? dob,
     String? phone,
     String? altPhone,
     String? email,
+    String? teacherIdCard,
     String? address,
     String? qualification,
     int? experience,
@@ -63,21 +64,30 @@ class TeacherController extends GetxController {
     bool? checkBox,
     List<String>? subjects,
     String? schoolType,
+    File? teacherProfile,
+    Uint8List? teacherProfileBytes,
   }) async {
     isLoading.value = true;
     errorMessage.value = '';
 
     try {
+      // Debug log
+      print('📤 Creating Teacher:');
+      print('   firstName: $firstName');
+      print('   lastName: $lastName');
+      print('   subjects: $subjects');
+      print('   subjects type: ${subjects.runtimeType}');
+      print('   schoolType: $schoolType');
+
       final response = await _repository.createTeacher(
         firstName: firstName,
         lastName: lastName,
-        teacherId: teacherId,
-        teacherProfile: teacherProfile,
         gender: gender,
         dob: dob,
         phone: phone,
         altPhone: altPhone,
         email: email,
+        teacherIdCard: teacherIdCard,
         address: address,
         qualification: qualification,
         experience: experience,
@@ -86,7 +96,13 @@ class TeacherController extends GetxController {
         checkBox: checkBox,
         subjects: subjects,
         schoolType: schoolType,
+        teacherProfile: teacherProfile,
+        teacherProfileBytes: teacherProfileBytes,
       );
+
+      print('📥 Response success: ${response.success}');
+      print('📥 Response message: ${response.message}');
+      print('📥 Response errors: ${response.errors}');
 
       if (response.success && response.data != null) {
         teachers.insert(0, response.data!);
@@ -148,17 +164,17 @@ class TeacherController extends GetxController {
     }
   }
 
-  // Update Teacher - FIXED: Only pass teacherProfile if a new file is selected
+  // Update Teacher
   Future<bool> updateTeacher({
     required int id,
     required String firstName,
     required String lastName,
-    String? teacherId,
     String? gender,
     String? dob,
     String? phone,
     String? altPhone,
     String? email,
+    String? teacherIdCard,
     String? address,
     String? qualification,
     int? experience,
@@ -168,6 +184,7 @@ class TeacherController extends GetxController {
     List<String>? subjects,
     String? schoolType,
     File? teacherProfile,
+    Uint8List? teacherProfileBytes,
   }) async {
     isLoading.value = true;
     errorMessage.value = '';
@@ -177,12 +194,12 @@ class TeacherController extends GetxController {
         id: id,
         firstName: firstName,
         lastName: lastName,
-        teacherId: teacherId,
         gender: gender,
         dob: dob,
         phone: phone,
         altPhone: altPhone,
         email: email,
+        teacherIdCard: teacherIdCard,
         address: address,
         qualification: qualification,
         experience: experience,
@@ -191,7 +208,8 @@ class TeacherController extends GetxController {
         checkBox: checkBox,
         subjects: subjects,
         schoolType: schoolType,
-        teacherProfile: teacherProfile, // Pass null if no new image
+        teacherProfile: teacherProfile,
+        teacherProfileBytes: teacherProfileBytes,
       );
 
       if (response.success && response.data != null) {
