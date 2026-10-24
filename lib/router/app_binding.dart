@@ -17,6 +17,7 @@ class AppBindings implements Bindings {
   @override
   void dependencies() {
     // Register all controllers
+    Get.put<SchoolTypeController>(SchoolTypeController(), permanent: true);
     Get.put<TeacherController>(TeacherController(), permanent: true);
     Get.put<StudentController>(StudentController(), permanent: true);
     Get.put<StudentAttendanceController>(StudentAttendanceController(), permanent: true);
@@ -25,7 +26,7 @@ class AppBindings implements Bindings {
     Get.put<ScheduleController>(ScheduleController(), permanent: true);
     Get.put<SchoolTypeController>(SchoolTypeController(), permanent: true);
     Get.put<TeacherAttendanceController>(TeacherAttendanceController(), permanent: true);
-
+    Get.put<ClassController>(ClassController(), permanent: true);
 
   }
 }

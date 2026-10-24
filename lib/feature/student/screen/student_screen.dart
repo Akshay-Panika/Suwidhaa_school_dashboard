@@ -462,6 +462,14 @@ class _StudentScreenState extends State<StudentScreen> {
 
   Widget _buildStudentCard(StudentModel student) {
     final isSelected = controller.selectedStudent.value?.id == student.id;
+    final studentId = student.id;
+
+    // Fire-and-forget: only hits API once per student
+    if (studentId != null &&
+        !attController.todayByStudent.containsKey(studentId) &&
+        !attController.todayLoadingFor.contains(studentId)) {
+      Future.microtask(() => attController.loadTodayForStudent(studentId));
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -469,7 +477,9 @@ class _StudentScreenState extends State<StudentScreen> {
       decoration: BoxDecoration(
         color: Colors.grey[50],
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: isSelected ? Colors.blue[300]! : Colors.grey[200]!, width: 1),
+        border: Border.all(
+            color: isSelected ? Colors.blue[300]! : Colors.grey[200]!,
+            width: 1),
       ),
       child: Row(
         children: [
@@ -479,15 +489,24 @@ class _StudentScreenState extends State<StudentScreen> {
             decoration: BoxDecoration(
               color: Colors.blue.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
-              image: student.studentProfile != null && student.studentProfile!.isNotEmpty
-                  ? DecorationImage(image: NetworkImage(student.studentProfile!), fit: BoxFit.cover)
+              image: student.studentProfile != null &&
+                  student.studentProfile!.isNotEmpty
+                  ? DecorationImage(
+                  image: NetworkImage(student.studentProfile!),
+                  fit: BoxFit.cover)
                   : null,
             ),
-            child: student.studentProfile == null || student.studentProfile!.isEmpty
+            child: student.studentProfile == null ||
+                student.studentProfile!.isEmpty
                 ? Center(
               child: Text(
-                '${student.firstName.isNotEmpty ? student.firstName[0] : ''}${student.lastName.isNotEmpty ? student.lastName[0] : ''}'.toUpperCase(),
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue[700]),
+                '${student.firstName.isNotEmpty ? student.firstName[0] : ''}'
+                    '${student.lastName.isNotEmpty ? student.lastName[0] : ''}'
+                    .toUpperCase(),
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue[700]),
               ),
             )
                 : null,
@@ -513,22 +532,35 @@ class _StudentScreenState extends State<StudentScreen> {
                     children: [
                       Text(
                         '${student.firstName} ${student.middleName} ${student.lastName}',
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
+                        style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       Row(
                         spacing: 10,
                         children: [
-                          Text("ID: ${student.studentIdCard ?? 'No ID'}", style: TextStyle(fontSize: 12, color: Colors.red)),
-                          Container(height: 12, width: 1, color: Colors.grey),
-                          Text("Class: ${student.studentClass}", style: TextStyle(fontSize: 12, color: Colors.black)),
+                          Text(
+                            "ID: ${student.studentIdCard ?? 'No ID'}",
+                            style: const TextStyle(
+                                fontSize: 12, color: Colors.red),
+                          ),
+                          Container(
+                              height: 12, width: 1, color: Colors.grey),
+                          Text(
+                            "Class: ${student.studentClass}",
+                            style: const TextStyle(
+                                fontSize: 12, color: Colors.black),
+                          ),
                         ],
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  _buildInfoText(Icons.school, student.schoolName ?? 'N/A', color: Colors.blue),
+                  _buildInfoText(Icons.school, student.schoolName ?? 'N/A',
+                      color: Colors.blue),
                 ],
               ),
             ),
@@ -537,7 +569,9 @@ class _StudentScreenState extends State<StudentScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(6)),
+                decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(6)),
                 child: TextButton.icon(
                   onPressed: () {
                     controller.selectedStudent.value = student;
@@ -547,19 +581,71 @@ class _StudentScreenState extends State<StudentScreen> {
                       _showRightPanel = true;
                       _showOnlyAttendance = true;
                     });
-                    if (student.id != null) attController.loadHistory(student.id!);
+                    if (student.id != null) {
+                      attController.loadHistory(student.id!);
+                      attController.loadTodayForStudent(student.id!, force: true);
+                      attController.loadTodayAttendance(student.id!);
+                    }
                   },
-                  icon: Icon(Icons.calendar_month, size: 18, color: Colors.blue[700]),
+                  icon: Icon(Icons.calendar_month,
+                      size: 18, color: Colors.blue[700]),
+                  // ✅ Only this label changed — shows attendance_status
+                  label: Obx(() {
+                    if (studentId == null) {
+                      return Text(
+                        "Absent",
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.blue,
+                            fontWeight: FontWeight.w600),
+                      );
+                    }
 
-                  label: Text(
-                    "",
-                    style: TextStyle(fontSize: 12, color: Colors.blue, fontWeight: FontWeight.w600),
-                  ),
+                    // Always read observables inside Obx
+                    final loading =
+                    attController.todayLoadingFor.contains(studentId);
+                    final status = attController.todayStatusFor(studentId);
+
+                    if (loading && status.isEmpty) {
+                      return Text(
+                        "Loading...",
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.red,
+                            fontWeight: FontWeight.w600),
+                      );
+                    }
+
+                    final labelText =
+                    (status.isEmpty || status == 'Not marked')
+                        ? ""
+                        : _prettyStatus(status);
+
+                    if (labelText.isEmpty) {
+                      return Text(
+                        "Absent",
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.red,
+                            fontWeight: FontWeight.w600),
+                      );
+                    }
+
+                    return Text(
+                      labelText,
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: _colorForStatus(status),
+                          fontWeight: FontWeight.w600),
+                    );
+                  }),
                 ),
               ),
               const SizedBox(width: 10),
               Container(
-                decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(6)),
+                decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(6)),
                 child: IconButton(
                   onPressed: () {
                     _loadStudentToForm(student);
@@ -571,19 +657,23 @@ class _StudentScreenState extends State<StudentScreen> {
                       _showRightPanel = true;
                     });
                   },
-                  icon: Icon(Icons.edit_outlined, size: 18, color: Colors.blue[700]),
+                  icon: Icon(Icons.edit_outlined,
+                      size: 18, color: Colors.blue[700]),
                   padding: const EdgeInsets.all(6),
                   constraints: const BoxConstraints(),
                 ),
               ),
               const SizedBox(width: 10),
               Container(
-                decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(6)),
+                decoration: BoxDecoration(
+                    color: Colors.red[50],
+                    borderRadius: BorderRadius.circular(6)),
                 child: IconButton(
                   onPressed: () {
                     controller.deleteStudent(student.id!);
                   },
-                  icon: Icon(Icons.delete_outline, size: 18, color: Colors.red[400]),
+                  icon: Icon(Icons.delete_outline,
+                      size: 18, color: Colors.red[400]),
                   padding: const EdgeInsets.all(6),
                   constraints: const BoxConstraints(),
                 ),
@@ -594,6 +684,7 @@ class _StudentScreenState extends State<StudentScreen> {
       ),
     );
   }
+
 
   Widget _buildInfoText(IconData icon, String text, {Color? color}) {
     return Row(

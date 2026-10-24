@@ -81,6 +81,10 @@ class StudentAttendanceModel {
     }
   }
 
+  bool get isPresent => attendanceStatus.toLowerCase() == 'present';
+  bool get isAbsent => attendanceStatus.toLowerCase() == 'absent';
+  bool get isLeave => attendanceStatus.toLowerCase() == 'leave';
+
   @override
   String toString() =>
       'StudentAttendanceModel(id: $id, date: $date, status: $attendanceStatus)';
@@ -138,8 +142,6 @@ class StudentAttendanceHistoryResponse {
     return list;
   }
 
-  /// Distinct attendance statuses observed in backend history.
-  /// Used to build the UI filter chips — no hardcoded values.
   List<String> get availableStatuses {
     final set = <String>{};
     for (final rec in allRecords) {
@@ -150,7 +152,6 @@ class StudentAttendanceHistoryResponse {
     return set.toList();
   }
 
-  /// Distinct years in history (as ints), sorted ascending.
   List<int> get availableYears {
     final set = <int>{};
     for (final y in history.keys) {
@@ -161,12 +162,10 @@ class StudentAttendanceHistoryResponse {
     return list;
   }
 
-  /// Distinct month names for a given year, in backend order.
   List<String> monthsForYear(int year) {
     return history[year.toString()]?.keys.toList() ?? [];
   }
 
-  /// Latest (year, month) in history. Used to auto-select the calendar month.
   ({int year, int month})? get latestYearMonth {
     int? latestYear;
     int? latestMonth;
@@ -200,4 +199,52 @@ class StudentAttendanceHistoryResponse {
   @override
   String toString() =>
       'StudentAttendanceHistoryResponse(total: $totalRecords, years: ${history.keys.toList()})';
+}
+
+// ============================================================
+// ✅ NEW: Response model for /student-attendance/today/<id>/
+// ============================================================
+class TodayAttendanceResponse {
+  final bool status;
+  final String? message;
+  final String? error;
+  final Map<String, dynamic>? student;
+  final String date;
+  final String dayName;
+  final StudentAttendanceModel? attendance;
+
+  TodayAttendanceResponse({
+    required this.status,
+    this.message,
+    this.error,
+    this.student,
+    required this.date,
+    required this.dayName,
+    this.attendance,
+  });
+
+  factory TodayAttendanceResponse.fromJson(Map<String, dynamic> json) {
+    return TodayAttendanceResponse(
+      status: json['status'] as bool? ?? false,
+      message: json['message']?.toString(),
+      error: json['error']?.toString(),
+      student: json['student'] is Map<String, dynamic>
+          ? json['student'] as Map<String, dynamic>
+          : null,
+      date: json['date']?.toString() ?? '',
+      dayName: json['day_name']?.toString() ?? '',
+      attendance: json['attendance'] is Map<String, dynamic>
+          ? StudentAttendanceModel.fromJson(json['attendance'] as Map<String, dynamic>)
+          : null,
+    );
+  }
+
+  bool get hasAttendance => attendance != null;
+  bool get isPresent => attendance?.isPresent ?? false;
+  bool get isAbsent => attendance?.isAbsent ?? false;
+  bool get isLeave => attendance?.isLeave ?? false;
+
+  @override
+  String toString() =>
+      'TodayAttendanceResponse(date: $date, hasAttendance: $hasAttendance, status: $status)';
 }

@@ -16,6 +16,7 @@ class ApiUrls {
    static const String studentAttendanceList = 'v1/school/student-attendance/list/';
   static String studentAttendanceDetail(int studentId) => 'v1/school/student-attendance/list/$studentId/';
   static String studentAttendanceDelete(int studentId, String date) => 'v1/school/student-attendance/list/$studentId/$date/';
+  static String studentAttendanceToday(int studentId) => 'v1/school/student-attendance/today/$studentId/';
 
   // Teacher Attendance endpoints
   static const String teacherAttendanceList = 'v1/school/teacher-attendance/list/';
@@ -32,9 +33,9 @@ class ApiUrls {
   static String teacherBySchool(int schoolId) => 'v1/school/teacher/list/school/$schoolId/';
 
   // Class endpoints
-  static const String classList = 'v1/school/class/list/';
   static const String classCreate = 'v1/school/class/create/';
-  static const String classDetail = 'v1/school/class/';  // + id
+  static String classListBySchool(int schoolId) => 'v1/school/class/list/school/$schoolId/';
+  static String classAssignTeacher(int classId) => 'v1/school/class/$classId/assign-teacher/';
 
   // Subject endpoints
   static const String subjectList = 'v1/school/subject/list/';

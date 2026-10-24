@@ -1,36 +1,5 @@
-// ============ ENUMS ============
-enum ClassFilter {
-  all,
-  nursery,
-  lkg,
-  ukg,
-  first,
-  second,
-  third,
-  fourth,
-  fifth,
-  sixth,
-  seventh,
-  eighth,
-  ninth,
-  tenth,
-  eleventh,
-  twelfth,
-}
+// lib/feature/classes/model/class_model.dart
 
-enum ClassStatus {
-  active,
-  inactive,
-  completed,
-}
-
-enum SchoolFilter {
-  all,
-  schoolA,
-  schoolB,
-}
-
-// ============ API MODELS ============
 class ClassListResponse {
   final bool success;
   final int? count;
@@ -48,7 +17,8 @@ class ClassListResponse {
       count: json['count'],
       data: (json['data'] as List?)
           ?.map((e) => ClassApiModel.fromJson(e))
-          .toList() ?? [],
+          .toList() ??
+          [],
     );
   }
 }
@@ -57,8 +27,9 @@ class ClassApiModel {
   final int id;
   final String className;
   final String schoolName;
-  final List<SectionApiModel> sections;
+  final List<String> sections;
   final bool checkBox;
+  final ClassTeacherModel? classTeacher;
   final String createdAt;
   final String updatedAt;
 
@@ -68,6 +39,7 @@ class ClassApiModel {
     required this.schoolName,
     required this.sections,
     required this.checkBox,
+    this.classTeacher,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -76,60 +48,42 @@ class ClassApiModel {
     return ClassApiModel(
       id: json['id'] ?? 0,
       className: json['class_name'] ?? '',
-      schoolName: json['school_name'] ?? '',
+      schoolName: json['school']?['school_name'] ?? 'No School', // ✅ Read from nested school object
       sections: (json['sections'] as List?)
-          ?.map((e) => SectionApiModel.fromJson(e))
-          .toList() ?? [],
+          ?.map((e) => e.toString())
+          .toList() ??
+          [], // ✅ Map to list of strings
       checkBox: json['check_box'] ?? false,
+      classTeacher: json['class_teacher'] != null
+          ? ClassTeacherModel.fromJson(json['class_teacher'])
+          : null,
       createdAt: json['created_at'] ?? '',
       updatedAt: json['updated_at'] ?? '',
     );
   }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'class_name': className,
-      'school_name': schoolName,
-      'sections': sections.map((e) => e.toJson()).toList(),
-      'check_box': checkBox,
-    };
-  }
 }
 
-class SectionApiModel {
-  final String name;
-  final String roomNumber;
-  final List<String> subjectNames;
-  final int totalStudent;
-  final String classTeacherName;
+class ClassTeacherModel {
+  final int id;
+  final String firstName;
+  final String lastName;
+  final String? profileImage;
 
-  SectionApiModel({
-    required this.name,
-    required this.roomNumber,
-    required this.subjectNames,
-    required this.totalStudent,
-    required this.classTeacherName,
+  ClassTeacherModel({
+    required this.id,
+    required this.firstName,
+    required this.lastName,
+    this.profileImage,
   });
 
-  factory SectionApiModel.fromJson(Map<String, dynamic> json) {
-    return SectionApiModel(
-      name: json['name'] ?? '',
-      roomNumber: json['room_number'] ?? '',
-      subjectNames: (json['subject_names'] as List?)
-          ?.map((e) => e.toString())
-          .toList() ?? [],
-      totalStudent: json['total_student'] ?? 0,
-      classTeacherName: json['class_teacher_name'] ?? '',
+  factory ClassTeacherModel.fromJson(Map<String, dynamic> json) {
+    return ClassTeacherModel(
+      id: json['id'] ?? 0,
+      firstName: json['first_name'] ?? '',
+      lastName: json['last_name'] ?? '',
+      profileImage: json['teacher_profile'],
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'name': name,
-      'room_number': roomNumber,
-      'subject_names': subjectNames,
-      'total_student': totalStudent,
-      'class_teacher_name': classTeacherName,
-    };
-  }
+  String get fullName => '$firstName $lastName'.trim();
 }

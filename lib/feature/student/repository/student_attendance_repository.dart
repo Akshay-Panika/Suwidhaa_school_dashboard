@@ -1,3 +1,4 @@
+// lib/feature/student_attendance/repository/student_attendance_repository.dart
 import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_urls.dart';
@@ -9,6 +10,15 @@ class StudentAttendanceRepository {
   Future<StudentAttendanceHistoryResponse> getHistory(int studentId) async {
     final response = await _dio.get(ApiUrls.studentAttendanceDetail(studentId));
     return StudentAttendanceHistoryResponse.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
+   Future<TodayAttendanceResponse> getTodayAttendance(int studentId) async {
+    final response = await _dio.get(
+      ApiUrls.studentAttendanceToday(studentId),
+    );
+    return TodayAttendanceResponse.fromJson(
       response.data as Map<String, dynamic>,
     );
   }
