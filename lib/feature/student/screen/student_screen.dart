@@ -1,38 +1,18 @@
-// lib/screens/student_screen.dart
+// lib/feature/student/screen/student_screen.dart
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'dart:io';
-import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, Uint8List;
 import '../../../core/widget/flutter_toast.dart';
+import '../../main/widget/school_type_filter_widget.dart';
+import '../../main/controller/school_type_controller.dart';
+import '../../main/model/school_type_model.dart';
+import '../controller/student_attendance_controller.dart';
+import '../controller/student_controller.dart';
+import '../model/student_attendance_model.dart';
 import '../model/student_model.dart';
-import '../repository/student_repository.dart';
-
-enum StudentFilter {
-  all,
-  classKG,
-  classLKG,
-  classUKG,
-  class1st,
-  class2nd,
-  class3rd,
-  class4th,
-  class5th,
-  class6th,
-  class7th,
-  class8th,
-  class9th,
-  class10th,
-  class11th,
-  class12th,
-}
-
-enum SchoolFilter {
-  all,
-  schoolA,
-  schoolB,
-}
 
 class StudentScreen extends StatefulWidget {
   const StudentScreen({super.key});
@@ -42,62 +22,57 @@ class StudentScreen extends StatefulWidget {
 }
 
 class _StudentScreenState extends State<StudentScreen> {
-  final StudentRepository _repository = StudentRepository();
-
-  List<StudentModel> _students = [];
-  bool _isLoading = true;
-  bool _isSubmitting = false;
-  StudentFilter _currentFilter = StudentFilter.all;
-  SchoolFilter _currentSchoolFilter = SchoolFilter.all;
-  String _searchQuery = '';
-  bool _showRightPanel = false;
-  StudentModel? _selectedStudent;
-  bool _isEditing = false;
-  bool _isAddingNew = false;
+  final StudentController controller = Get.find<StudentController>();
+  final StudentAttendanceController attController = Get.find<StudentAttendanceController>();
+  final SchoolTypeController schoolController = Get.find<SchoolTypeController>();
 
   final _formKey = GlobalKey<FormState>();
+  final _searchController = TextEditingController();
+
+  String _searchQuery = '';
+  String _selectedClassFilter = 'All';
+  bool _showRightPanel = false;
+  bool _isEditing = false;
+  bool _isAddingNew = false;
+  bool _showOnlyAttendance = false;
+
+  DateTime? _selectedDate;
+  StudentAttendanceModel? _selectedRecord;
+
   final _firstNameController = TextEditingController();
   final _middleNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _dobController = TextEditingController();
-  final _rollNumberController = TextEditingController();
-  final _addressController = TextEditingController();
-  final _fatherNameController = TextEditingController();
-  final _motherNameController = TextEditingController();
   final _parentPhoneController = TextEditingController();
   final _alternativePhoneController = TextEditingController();
+  final _fatherNameController = TextEditingController();
+  final _motherNameController = TextEditingController();
+  final _studentIdCardController = TextEditingController();
+  final _rollNumberController = TextEditingController();
+  final _addressController = TextEditingController();
   final _casteCategoryController = TextEditingController();
   final _adharNumberController = TextEditingController();
   final _sssmidController = TextEditingController();
   final _feeAmountController = TextEditingController();
   final _paidAmountController = TextEditingController();
-  final _studentIdCardController = TextEditingController();
-
-  // School Type
-  String _selectedSchoolForm = 'A';
 
   String _selectedGender = 'Male';
   String _selectedClass = 'KG';
   String _selectedFeeStatus = 'Paid';
-  bool _checkBox = false;
+  bool _checkBox = true;
+
+  SchoolTypeModel? _formSelectedSchool;
+
   File? _imageFile;
   Uint8List? _imageBytes;
+  String? _existingImageUrl;
 
   final List<String> _classList = [
     'KG', 'LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th',
-    '6th', '7th', '8th', '9th', '10th', '11th', '12th',
+    '6th', '7th', '8th', '9th', '10th', '11th', '12th'
   ];
   final List<String> _genderList = ['Male', 'Female', 'Other'];
   final List<String> _feeStatusList = ['Paid', 'Pending', 'Overdue'];
-  final List<String> _schoolList = ['A', 'B'];
-
-  bool get _isWeb => kIsWeb;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadStudents();
-  }
 
   @override
   void dispose() {
@@ -105,245 +80,51 @@ class _StudentScreenState extends State<StudentScreen> {
     _middleNameController.dispose();
     _lastNameController.dispose();
     _dobController.dispose();
-    _rollNumberController.dispose();
-    _addressController.dispose();
-    _fatherNameController.dispose();
-    _motherNameController.dispose();
     _parentPhoneController.dispose();
     _alternativePhoneController.dispose();
+    _fatherNameController.dispose();
+    _motherNameController.dispose();
+    _studentIdCardController.dispose();
+    _rollNumberController.dispose();
+    _addressController.dispose();
     _casteCategoryController.dispose();
     _adharNumberController.dispose();
     _sssmidController.dispose();
     _feeAmountController.dispose();
     _paidAmountController.dispose();
-    _studentIdCardController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadStudents() async {
-    setState(() => _isLoading = true);
-    try {
-      final students = await _repository.getStudents();
-      setState(() {
-        _students = students;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
-      FlutterToast.error('Failed to load students: $e');
+  List<String> get _availableClasses {
+    final set = <String>{};
+    for (final s in controller.students) {
+      final cls = s.studentClass.trim();
+      if (cls.isNotEmpty) set.add(cls);
     }
-  }
-
-  Future<void> _createStudent() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isSubmitting = true);
-
-    try {
-      final student = StudentModel(
-        firstName: _firstNameController.text.trim(),
-        middleName: _middleNameController.text.trim(),
-        lastName: _lastNameController.text.trim(),
-        dob: _dobController.text.trim(),
-        gender: _selectedGender,
-        fatherName: _fatherNameController.text.trim(),
-        motherName: _motherNameController.text.trim(),
-        parentPhone: _parentPhoneController.text.trim(),
-        alternativePhone: _alternativePhoneController.text.trim(),
-        adharNumber: _adharNumberController.text.trim(),
-        sssmid: _sssmidController.text.trim(),
-        studentClass: _selectedClass,
-        rollNumber: _rollNumberController.text.trim(),
-        address: _addressController.text.trim(),
-        casteCategory: _casteCategoryController.text.trim(),
-        feeStatus: _selectedFeeStatus,
-        feeAmount: _feeAmountController.text.trim().isEmpty ? '0.00' : _feeAmountController.text.trim(),
-        paidAmount: _paidAmountController.text.trim().isEmpty ? '0.00' : _paidAmountController.text.trim(),
-        checkBox: _checkBox,
-        schoolType: _selectedSchoolForm,
-        studentIdCard: _studentIdCardController.text.trim(),
-      );
-
-      final created = await _repository.createStudent(
-        student: student,
-        studentProfile: _imageFile,
-        studentProfileBytes: _imageBytes,
-      );
-
-      setState(() {
-        _students.insert(0, created);
-        _showRightPanel = false;
-        _isAddingNew = false;
-        _resetForm();
-      });
-
-      FlutterToast.success('Student added successfully!');
-    } catch (e) {
-      FlutterToast.error('Failed to create student: $e');
-    } finally {
-      setState(() => _isSubmitting = false);
-    }
-  }
-
-  Future<void> _updateStudent() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_selectedStudent?.id == null) return;
-
-    setState(() => _isSubmitting = true);
-
-    try {
-      final student = StudentModel(
-        firstName: _firstNameController.text.trim(),
-        middleName: _middleNameController.text.trim(),
-        lastName: _lastNameController.text.trim(),
-        dob: _dobController.text.trim(),
-        gender: _selectedGender,
-        fatherName: _fatherNameController.text.trim(),
-        motherName: _motherNameController.text.trim(),
-        parentPhone: _parentPhoneController.text.trim(),
-        alternativePhone: _alternativePhoneController.text.trim(),
-        adharNumber: _adharNumberController.text.trim(),
-        sssmid: _sssmidController.text.trim(),
-        studentClass: _selectedClass,
-        rollNumber: _rollNumberController.text.trim(),
-        address: _addressController.text.trim(),
-        casteCategory: _casteCategoryController.text.trim(),
-        feeStatus: _selectedFeeStatus,
-        feeAmount: _feeAmountController.text.trim().isEmpty ? '0.00' : _feeAmountController.text.trim(),
-        paidAmount: _paidAmountController.text.trim().isEmpty ? '0.00' : _paidAmountController.text.trim(),
-        checkBox: _checkBox,
-        schoolType: _selectedSchoolForm,
-        studentIdCard: _studentIdCardController.text.trim(),
-      );
-
-      final updated = await _repository.updateStudent(
-        id: _selectedStudent!.id!,
-        student: student,
-        studentProfile: _imageFile,
-        studentProfileBytes: _imageBytes,
-      );
-
-      final index = _students.indexWhere((s) => s.id == _selectedStudent!.id);
-      if (index != -1) {
-        setState(() {
-          _students[index] = updated;
-          _selectedStudent = updated;
-          _isEditing = false;
-          _resetForm();
-        });
-      }
-
-      FlutterToast.success('Student updated successfully!');
-    } catch (e) {
-      FlutterToast.error('Failed to update student: $e');
-    } finally {
-      setState(() => _isSubmitting = false);
-    }
-  }
-
-  Future<void> _deleteStudent(StudentModel student) async {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Student'),
-        content: Text('Are you sure you want to delete ${student.firstName} ${student.lastName}?'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              try {
-                final success = await _repository.deleteStudent(student.id!);
-                if (success) {
-                  setState(() {
-                    _students.removeWhere((s) => s.id == student.id);
-                    if (_selectedStudent?.id == student.id) {
-                      _showRightPanel = false;
-                      _selectedStudent = null;
-                    }
-                  });
-                  FlutterToast.success('Student deleted successfully!');
-                }
-              } catch (e) {
-                FlutterToast.error('Failed to delete student: $e');
-              }
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
+    final list = set.toList()..sort();
+    return ['All', ...list];
   }
 
   List<StudentModel> get _filteredStudents {
-    var filtered = _students;
-
-    // School Filter
-    if (_currentSchoolFilter == SchoolFilter.schoolA) {
-      filtered = filtered.where((student) => student.schoolType == 'A').toList();
-    } else if (_currentSchoolFilter == SchoolFilter.schoolB) {
-      filtered = filtered.where((student) => student.schoolType == 'B').toList();
+    List<StudentModel> filtered = List.from(controller.students);
+    if (_selectedClassFilter != 'All') {
+      filtered = filtered
+          .where((s) => s.studentClass.trim() == _selectedClassFilter)
+          .toList();
     }
-
-    // Class Filter
-    if (_currentFilter != StudentFilter.all) {
-      final classMap = {
-        StudentFilter.classKG: 'KG',
-        StudentFilter.classLKG: 'LKG',
-        StudentFilter.classUKG: 'UKG',
-        StudentFilter.class1st: '1st',
-        StudentFilter.class2nd: '2nd',
-        StudentFilter.class3rd: '3rd',
-        StudentFilter.class4th: '4th',
-        StudentFilter.class5th: '5th',
-        StudentFilter.class6th: '6th',
-        StudentFilter.class7th: '7th',
-        StudentFilter.class8th: '8th',
-        StudentFilter.class9th: '9th',
-        StudentFilter.class10th: '10th',
-        StudentFilter.class11th: '11th',
-        StudentFilter.class12th: '12th',
-      };
-      final className = classMap[_currentFilter];
-      if (className != null) {
-        filtered = filtered.where((student) => student.studentClass == className).toList();
-      }
-    }
-
-    // Search Query
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
       filtered = filtered.where((student) =>
-      '${student.firstName} ${student.middleName} ${student.lastName}'
-          .toLowerCase()
-          .contains(query) ||
+      '${student.firstName} ${student.middleName} ${student.lastName}'.toLowerCase().contains(query) ||
           student.id?.toString().contains(query) == true ||
           student.rollNumber.toLowerCase().contains(query) ||
           student.studentClass.toLowerCase().contains(query) ||
           student.studentIdCard?.toLowerCase().contains(query) == true ||
-          student.schoolType?.toLowerCase().contains(query) == true).toList();
+          student.schoolName?.toLowerCase().contains(query) == true
+      ).toList();
     }
-
     return filtered;
-  }
-
-  int get _totalStudents => _students.length;
-  int get _paidStudents => _students.where((s) => s.feeStatus == 'Paid').length;
-  int get _pendingStudents =>
-      _students.where((s) => s.feeStatus == 'Pending' || s.feeStatus == 'Overdue').length;
-
-  Map<String, int> get _schoolWiseStats {
-    Map<String, int> stats = {};
-    for (var student in _students) {
-      final school = student.schoolType ?? 'Unknown';
-      stats[school] = (stats[school] ?? 0) + 1;
-    }
-    return stats;
   }
 
   void _resetForm() {
@@ -366,10 +147,11 @@ class _StudentScreenState extends State<StudentScreen> {
     _selectedGender = 'Male';
     _selectedClass = 'KG';
     _selectedFeeStatus = 'Paid';
-    _selectedSchoolForm = 'A';
-    _checkBox = false;
+    _checkBox = true;
     _imageFile = null;
     _imageBytes = null;
+    _existingImageUrl = null;
+    _formSelectedSchool = controller.selectedSchool.value;
     _formKey.currentState?.reset();
   }
 
@@ -390,321 +172,157 @@ class _StudentScreenState extends State<StudentScreen> {
     _feeAmountController.text = student.feeAmount;
     _paidAmountController.text = student.paidAmount;
     _studentIdCardController.text = student.studentIdCard ?? '';
-    _selectedGender = student.gender;
-    _selectedClass = _validateClassValue(student.studentClass);
-    _selectedFeeStatus = student.feeStatus;
-    _selectedSchoolForm = student.schoolType ?? 'A';
+
+    _selectedClass = _classList.contains(student.studentClass) ? student.studentClass : 'KG';
+    _selectedGender = _genderList.contains(student.gender) ? student.gender : 'Male';
+    _selectedFeeStatus = _feeStatusList.contains(student.feeStatus) ? student.feeStatus : 'Paid';
     _checkBox = student.checkBox;
+
+    _formSelectedSchool = schoolController.schoolTypes.firstWhereOrNull(
+          (s) => s.id == student.schoolId,
+    );
+
     _imageFile = null;
     _imageBytes = null;
-  }
-
-  String _validateClassValue(String value) {
-    if (_classList.contains(value)) return value;
-    if (value == '12' && _classList.contains('12th')) return '12th';
-    if (value == '12th' && _classList.contains('12')) return '12';
-    if (value == '1' && _classList.contains('1st')) return '1st';
-    if (value == '2' && _classList.contains('2nd')) return '2nd';
-    if (value == '3' && _classList.contains('3rd')) return '3rd';
-    if (value == '4' && _classList.contains('4th')) return '4th';
-    if (value == '5' && _classList.contains('5th')) return '5th';
-    if (value == '6' && _classList.contains('6th')) return '6th';
-    if (value == '7' && _classList.contains('7th')) return '7th';
-    if (value == '8' && _classList.contains('8th')) return '8th';
-    if (value == '9' && _classList.contains('9th')) return '9th';
-    if (value == '10' && _classList.contains('10th')) return '10th';
-    if (value == '11' && _classList.contains('11th')) return '11th';
-    return _classList.first;
+    _existingImageUrl = student.studentProfile;
   }
 
   Future<void> _pickImage() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.image,
-        allowMultiple: false,
-        withData: true,
+        type: FileType.image, allowMultiple: false, withData: true,
       );
-
       if (result != null && result.files.isNotEmpty) {
         final file = result.files.first;
         if (file.size > 5 * 1024 * 1024) {
-          FlutterToast.warning('Image size too large. Please select an image under 5MB.');
+          FlutterToast.warning('Image size too large. Under 5MB only.');
           return;
         }
-
-        if (_isWeb) {
-          if (file.bytes != null) {
-            setState(() {
-              _imageBytes = file.bytes;
-            });
-            FlutterToast.success('Image uploaded successfully!');
-          }
+        if (kIsWeb) {
+          if (file.bytes != null) setState(() => _imageBytes = file.bytes);
         } else {
-          String? filePath = file.path;
-          if (filePath != null) {
-            setState(() {
-              _imageFile = File(filePath);
-            });
-            FlutterToast.success('Image uploaded successfully!');
-          }
+          if (file.path != null) setState(() => _imageFile = File(file.path!));
         }
       }
     } catch (e) {
-      FlutterToast.error('Error picking image: ${e.toString()}');
+      FlutterToast.error('Error picking image: $e');
     }
   }
 
-  Color _getFeeStatusColor(String status) {
-    switch (status) {
-      case 'Paid':
-        return Colors.green;
-      case 'Pending':
-        return Colors.orange;
-      case 'Overdue':
-        return Colors.red;
-      default:
-        return Colors.grey;
+  Future<void> _submitForm() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (_formSelectedSchool == null) {
+      FlutterToast.warning('Please select a school for this student.');
+      return;
     }
-  }
 
-  Color _getSchoolColor(String? school) {
-    switch (school) {
-      case 'A':
-        return Colors.blue;
-      case 'B':
-        return Colors.green;
-      default:
-        return Colors.grey;
+    controller.selectedSchool.value = _formSelectedSchool;
+
+    controller.firstNameController.text = _firstNameController.text.trim();
+    controller.middleNameController.text = _middleNameController.text.trim();
+    controller.lastNameController.text = _lastNameController.text.trim();
+    controller.dobController.text = _dobController.text.trim();
+    controller.genderController.text = _selectedGender;
+    controller.fatherNameController.text = _fatherNameController.text.trim();
+    controller.motherNameController.text = _motherNameController.text.trim();
+    controller.parentPhoneController.text = _parentPhoneController.text.trim();
+    controller.alternativePhoneController.text = _alternativePhoneController.text.trim();
+    controller.adharNumberController.text = _adharNumberController.text.trim();
+    controller.sssmidController.text = _sssmidController.text.trim();
+    controller.studentClassController.text = _selectedClass;
+    controller.rollNumberController.text = _rollNumberController.text.trim();
+    controller.addressController.text = _addressController.text.trim();
+    controller.casteCategoryController.text = _casteCategoryController.text.trim();
+    controller.feeStatusController.text = _selectedFeeStatus;
+    controller.feeAmountController.text = _feeAmountController.text.trim().isEmpty ? '0.00' : _feeAmountController.text.trim();
+    controller.paidAmountController.text = _paidAmountController.text.trim().isEmpty ? '0.00' : _paidAmountController.text.trim();
+    controller.studentIdCardController.text = _studentIdCardController.text.trim();
+
+    controller.studentProfileFile = _imageFile;
+    controller.studentProfileBytes = _imageBytes;
+
+    if (_isEditing && controller.selectedStudent.value != null) {
+      await controller.updateStudent(controller.selectedStudent.value!.id!);
+    } else {
+      await controller.createStudent();
     }
-  }
 
-  Color _getGenderColor(String gender) {
-    switch (gender) {
-      case 'Male':
-        return Colors.blue;
-      case 'Female':
-        return Colors.pink;
-      default:
-        return Colors.purple;
-    }
-  }
-
-  String _getInitials(String firstName, String lastName) {
-    if (firstName.isEmpty || lastName.isEmpty) return '??';
-    return '${firstName[0]}${lastName[0]}'.toUpperCase();
-  }
-
-  String _formatDate(String dateString) {
-    if (dateString.isEmpty) return 'N/A';
-    try {
-      final date = DateTime.parse(dateString);
-      return DateFormat('dd MMM yyyy, hh:mm a').format(date);
-    } catch (e) {
-      return dateString;
+    if (!controller.isSubmitting.value) {
+      setState(() {
+        _showRightPanel = false;
+        _isAddingNew = false;
+        _isEditing = false;
+        _showOnlyAttendance = false;
+        _resetForm();
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final schoolStats = _schoolWiseStats;
-    final schoolLabel = _currentSchoolFilter == SchoolFilter.all
-        ? 'All Schools'
-        : _currentSchoolFilter == SchoolFilter.schoolA
-        ? 'School A'
-        : 'School B';
-
     return Scaffold(
-      body: Container(
-        margin: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.05),
-              spreadRadius: 1,
-              blurRadius: 10,
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              flex: _showRightPanel ? 5 : 8,
-              child: Column(
-                children: [
-                  _buildHeader(schoolLabel, schoolStats),
-                  _buildFilterSearchBar(),
-                  Expanded(
-                    child: _isLoading
-                        ? _buildShimmerList()
-                        : _filteredStudents.isEmpty
-                        ? _buildEmptyState()
-                        : ListView.builder(
-                      padding: const EdgeInsets.all(12),
-                      itemCount: _filteredStudents.length,
-                      itemBuilder: (context, index) {
-                        return _buildStudentCard(_filteredStudents[index]);
-                      },
+      body: Obx(() {
+        return Container(
+          margin: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.05), blurRadius: 10)],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                flex: _showRightPanel ? 5 : 8,
+                child: Column(
+                  children: [
+                    _buildHeader(),
+                    _buildFilterSearchBar(),
+                    Expanded(
+                      child: controller.isLoading.value
+                          ? _buildShimmerList()
+                          : _filteredStudents.isEmpty
+                          ? _buildEmptyState()
+                          : ListView.builder(
+                        padding: const EdgeInsets.all(12),
+                        itemCount: _filteredStudents.length,
+                        itemBuilder: (context, index) => _buildStudentCard(_filteredStudents[index]),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              width: 450,
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: const BorderRadius.only(
-                  topRight: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
-                ),
-                border: Border(
-                  left: BorderSide(
-                    color: Colors.grey[200]!,
-                    width: 1,
-                  ),
+                  ],
                 ),
               ),
-              child: _isLoading
-                  ? _buildShimmerRightPanel()
-                  : _showRightPanel
-                  ? (_isAddingNew
-                  ? _buildAddPanel()
-                  : _isEditing
-                  ? _buildEditPanel()
-                  : _buildViewPanel())
-                  : _buildEmptyRightPanel(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildShimmerCard() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey[200]!, width: 1),
-      ),
-      child: Row(
-        children: [
-          Shimmer.fromColors(
-            baseColor: Colors.grey[300]!,
-            highlightColor: Colors.grey[100]!,
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
+              Container(
+                width: 480,
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: const BorderRadius.only(topRight: Radius.circular(16), bottomRight: Radius.circular(16)),
+                  border: Border(left: BorderSide(color: Colors.grey[200]!, width: 1)),
+                ),
+                child: _showRightPanel
+                    ? (_isAddingNew
+                    ? _buildFormPanel('Add New Student')
+                    : _isEditing
+                    ? _buildFormPanel('Edit Student')
+                    : _showOnlyAttendance
+                    ? _buildAttendanceOnlyPanel()
+                    : _buildViewPanel())
+                    : _buildEmptyRightPanel(),
               ),
-            ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Shimmer.fromColors(
-                  baseColor: Colors.grey[300]!,
-                  highlightColor: Colors.grey[100]!,
-                  child: Container(
-                    height: 14,
-                    width: double.infinity,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Shimmer.fromColors(
-                  baseColor: Colors.grey[300]!,
-                  highlightColor: Colors.grey[100]!,
-                  child: Container(
-                    height: 10,
-                    width: 100,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        );
+      }),
     );
   }
 
-  Widget _buildShimmerList() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(12),
-      itemCount: 6,
-      itemBuilder: (context, index) => _buildShimmerCard(),
-    );
-  }
-
-  Widget _buildShimmerRightPanel() {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Shimmer.fromColors(
-              baseColor: Colors.grey[300]!,
-              highlightColor: Colors.grey[100]!,
-              child: Container(
-                width: 120,
-                height: 120,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Shimmer.fromColors(
-              baseColor: Colors.grey[300]!,
-              highlightColor: Colors.grey[100]!,
-              child: Container(
-                height: 20,
-                width: 200,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Shimmer.fromColors(
-              baseColor: Colors.grey[300]!,
-              highlightColor: Colors.grey[100]!,
-              child: Container(
-                height: 14,
-                width: 150,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(String schoolLabel, Map<String, int> schoolStats) {
+  Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
-        ),
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.grey[200]!,
-            width: 1,
-          ),
-        ),
+        borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
+        border: Border(bottom: BorderSide(color: Colors.grey[200]!, width: 1)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -713,128 +331,46 @@ class _StudentScreenState extends State<StudentScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.people,
-                  color: Colors.blue[700],
-                  size: 20,
-                ),
+                decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(8)),
+                child: Icon(Icons.people, color: Colors.blue[700], size: 20),
               ),
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      const Text(
-                        'Students Management',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.blue[50],
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.blue[200]!),
-                        ),
-                        child: Text(
-                          schoolLabel,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.blue[700],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    '${_filteredStudents.length} students found',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[500],
-                    ),
-                  ),
+                  const Text('Students Management', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  Text('${_filteredStudents.length} students found', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
                 ],
               ),
             ],
           ),
           Row(
             children: [
-              Container(
-                height: 36,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey[200]!),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<SchoolFilter>(
-                    value: _currentSchoolFilter,
-                    style: const TextStyle(fontSize: 12, color: Colors.black87),
-                    icon: Icon(Icons.school, color: Colors.grey[600], size: 18),
-                    items: const [
-                      DropdownMenuItem(
-                        value: SchoolFilter.all,
-                        child: Row(
-                          children: [
-                            Icon(Icons.school, size: 16, color: Colors.grey),
-                            SizedBox(width: 6),
-                            Text('All Schools'),
-                          ],
-                        ),
-                      ),
-                      DropdownMenuItem(
-                        value: SchoolFilter.schoolA,
-                        child: Row(
-                          children: [
-                            Icon(Icons.school, size: 16, color: Colors.blue),
-                            SizedBox(width: 6),
-                            Text('School A'),
-                          ],
-                        ),
-                      ),
-                      DropdownMenuItem(
-                        value: SchoolFilter.schoolB,
-                        child: Row(
-                          children: [
-                            Icon(Icons.school, size: 16, color: Colors.green),
-                            SizedBox(width: 6),
-                            Text('School B'),
-                          ],
-                        ),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        _currentSchoolFilter = value!;
-                        _selectedStudent = null;
-                        _showRightPanel = false;
-                      });
-                    },
-                  ),
-                ),
+              SchoolTypeFilterWidget(
+                compact: true,
+                value: controller.selectedSchool.value,
+                onChanged: (school) {
+                  controller.setSelectedSchool(school);
+                  setState(() {
+                    _showRightPanel = false;
+                    _showOnlyAttendance = false;
+                  });
+                },
               ),
               const SizedBox(width: 8),
               if (!_showRightPanel || !_isAddingNew)
                 ElevatedButton.icon(
-                  onPressed: _isSubmitting
-                      ? null
-                      : () {
+                  onPressed: () {
+                    if (controller.selectedSchool.value == null) {
+                      FlutterToast.warning('Please select a specific school from the top dropdown first.');
+                      return;
+                    }
                     _resetForm();
                     setState(() {
                       _isAddingNew = true;
                       _isEditing = false;
-                      _selectedStudent = null;
+                      _showOnlyAttendance = false;
+                      controller.selectedStudent.value = null;
                       _showRightPanel = true;
                     });
                   },
@@ -844,9 +380,7 @@ class _StudentScreenState extends State<StudentScreen> {
                     backgroundColor: Colors.blue[700],
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     elevation: 0,
                   ),
                 ),
@@ -855,9 +389,10 @@ class _StudentScreenState extends State<StudentScreen> {
                   onPressed: () {
                     setState(() {
                       _showRightPanel = false;
-                      _selectedStudent = null;
+                      controller.selectedStudent.value = null;
                       _isEditing = false;
                       _isAddingNew = false;
+                      _showOnlyAttendance = false;
                     });
                   },
                   icon: Icon(Icons.close, color: Colors.grey[600]),
@@ -874,23 +409,44 @@ class _StudentScreenState extends State<StudentScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       color: Colors.white,
       child: Row(
+        spacing: 16,
         children: [
+          Container(
+            height: 38,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _selectedClassFilter,
+                isDense: true,
+                icon: Icon(Icons.arrow_drop_down, size: 20, color: Colors.grey[600]),
+                style: const TextStyle(fontSize: 12, color: Colors.black87),
+                items: _availableClasses.map((c) {
+                  return DropdownMenuItem<String>(
+                    value: c,
+                    child: Text(c, style: const TextStyle(fontSize: 12)),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  if (val == null) return;
+                  setState(() => _selectedClassFilter = val);
+                },
+              ),
+            ),
+          ),
           Expanded(
             child: Container(
               height: 38,
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey[200]!),
-              ),
+              decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey[200]!)),
               child: TextField(
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                  });
-                },
+                controller: _searchController,
+                onChanged: (value) => setState(() => _searchQuery = value),
                 decoration: InputDecoration(
-                  hintText: 'Search students...',
+                  hintText: 'Search by name, ID, class...',
                   hintStyle: TextStyle(color: Colors.grey[400], fontSize: 12),
                   prefixIcon: Icon(Icons.search, size: 16, color: Colors.grey[400]),
                   border: InputBorder.none,
@@ -899,97 +455,21 @@ class _StudentScreenState extends State<StudentScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildClassFilterChip('All', StudentFilter.all, Colors.blue),
-                  const SizedBox(width: 4),
-                  _buildClassFilterChip('KG', StudentFilter.classKG, Colors.purple),
-                  const SizedBox(width: 4),
-                  _buildClassFilterChip('LKG', StudentFilter.classLKG, Colors.deepPurple),
-                  const SizedBox(width: 4),
-                  _buildClassFilterChip('UKG', StudentFilter.classUKG, Colors.indigo),
-                  const SizedBox(width: 4),
-                  _buildClassFilterChip('1st', StudentFilter.class1st, Colors.green),
-                  const SizedBox(width: 4),
-                  _buildClassFilterChip('2nd', StudentFilter.class2nd, Colors.lightGreen),
-                  const SizedBox(width: 4),
-                  _buildClassFilterChip('3rd', StudentFilter.class3rd, Colors.teal),
-                  const SizedBox(width: 4),
-                  _buildClassFilterChip('4th', StudentFilter.class4th, Colors.cyan),
-                  const SizedBox(width: 4),
-                  _buildClassFilterChip('5th', StudentFilter.class5th, Colors.orange),
-                  const SizedBox(width: 4),
-                  _buildClassFilterChip('6th', StudentFilter.class6th, Colors.deepOrange),
-                  const SizedBox(width: 4),
-                  _buildClassFilterChip('7th', StudentFilter.class7th, Colors.amber),
-                  const SizedBox(width: 4),
-                  _buildClassFilterChip('8th', StudentFilter.class8th, Colors.yellow),
-                  const SizedBox(width: 4),
-                  _buildClassFilterChip('9th', StudentFilter.class9th, Colors.lime),
-                  const SizedBox(width: 4),
-                  _buildClassFilterChip('10th', StudentFilter.class10th, Colors.red),
-                  const SizedBox(width: 4),
-                  _buildClassFilterChip('11th', StudentFilter.class11th, Colors.pink),
-                  const SizedBox(width: 4),
-                  _buildClassFilterChip('12th', StudentFilter.class12th, Colors.indigo),
-                ],
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildClassFilterChip(String label, StudentFilter filter, Color color) {
-    final isSelected = _currentFilter == filter;
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _currentFilter = filter;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? color : Colors.grey[50],
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? color : Colors.grey[200]!,
-            width: 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.grey[600],
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-            fontSize: 11,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildStudentCard(StudentModel student) {
-    final isSelected = _selectedStudent?.id == student.id;
-    final schoolColor = _getSchoolColor(student.schoolType);
+    final isSelected = controller.selectedStudent.value?.id == student.id;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isSelected ? Colors.blue[50] : Colors.grey[50],
+        color: Colors.grey[50],
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: isSelected ? Colors.blue[300]! : Colors.grey[200]!,
-          width: isSelected ? 2 : 1,
-        ),
+        border: Border.all(color: isSelected ? Colors.blue[300]! : Colors.grey[200]!, width: 1),
       ),
       child: Row(
         children: [
@@ -997,80 +477,58 @@ class _StudentScreenState extends State<StudentScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: _getGenderColor(student.gender).withOpacity(0.1),
+              color: Colors.blue.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
+              image: student.studentProfile != null && student.studentProfile!.isNotEmpty
+                  ? DecorationImage(image: NetworkImage(student.studentProfile!), fit: BoxFit.cover)
+                  : null,
             ),
-            child: student.studentProfile != null && student.studentProfile!.isNotEmpty
-                ? ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                student.studentProfile!,
-                fit: BoxFit.cover,
-                width: 40,
-                height: 40,
-                errorBuilder: (context, error, stackTrace) {
-                  return _buildInitialsAvatar(40, student.firstName, student.lastName, student.gender);
-                },
+            child: student.studentProfile == null || student.studentProfile!.isEmpty
+                ? Center(
+              child: Text(
+                '${student.firstName.isNotEmpty ? student.firstName[0] : ''}${student.lastName.isNotEmpty ? student.lastName[0] : ''}'.toUpperCase(),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue[700]),
               ),
             )
-                : _buildInitialsAvatar(40, student.firstName, student.lastName, student.gender),
+                : null,
           ),
           const SizedBox(width: 12),
           Expanded(
             child: InkWell(
               onTap: () {
+                controller.selectedStudent.value = student;
                 setState(() {
-                  _selectedStudent = student;
                   _showRightPanel = true;
                   _isEditing = false;
                   _isAddingNew = false;
+                  _showOnlyAttendance = false;
                 });
+                if (student.id != null) attController.loadHistory(student.id!);
               },
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          '${student.firstName} ${student.middleName.isNotEmpty ? student.middleName + ' ' : ''}${student.lastName}',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                      Text(
+                        '${student.firstName} ${student.middleName} ${student.lastName}',
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: _getFeeStatusColor(student.feeStatus).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          student.feeStatus,
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w600,
-                            color: _getFeeStatusColor(student.feeStatus),
-                          ),
-                        ),
+                      Row(
+                        spacing: 10,
+                        children: [
+                          Text("ID: ${student.studentIdCard ?? 'No ID'}", style: TextStyle(fontSize: 12, color: Colors.red)),
+                          Container(height: 12, width: 1, color: Colors.grey),
+                          Text("Class: ${student.studentClass}", style: TextStyle(fontSize: 12, color: Colors.black)),
+                        ],
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 2,
-                    children: [
-                      _buildInfoText(Icons.school, student.schoolType ?? 'N/A', color: schoolColor),
-                      _buildInfoText(Icons.class_, student.studentClass),
-                      if (student.studentIdCard?.isNotEmpty == true)
-                        _buildInfoText(Icons.badge, student.studentIdCard!),
-                    ],
-                  ),
+                  _buildInfoText(Icons.school, student.schoolName ?? 'N/A', color: Colors.blue),
                 ],
               ),
             ),
@@ -1079,122 +537,53 @@ class _StudentScreenState extends State<StudentScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: _getFeeStatusColor(student.feeStatus).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: _getFeeStatusColor(student.feeStatus).withOpacity(0.3),
-                    width: 1,
+                decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(6)),
+                child: TextButton.icon(
+                  onPressed: () {
+                    controller.selectedStudent.value = student;
+                    setState(() {
+                      _isEditing = false;
+                      _isAddingNew = false;
+                      _showRightPanel = true;
+                      _showOnlyAttendance = true;
+                    });
+                    if (student.id != null) attController.loadHistory(student.id!);
+                  },
+                  icon: Icon(Icons.calendar_month, size: 18, color: Colors.blue[700]),
+
+                  label: Text(
+                    "",
+                    style: TextStyle(fontSize: 12, color: Colors.blue, fontWeight: FontWeight.w600),
                   ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.circle,
-                          size: 8,
-                          color: _getFeeStatusColor(student.feeStatus),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          student.feeStatus,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: _getFeeStatusColor(student.feeStatus),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        const Text(
-                          '₹',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey,
-                          ),
-                        ),
-                        Text(
-                          student.feeAmount,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Text(
-                          '/',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Text(
-                          '₹',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey,
-                          ),
-                        ),
-                        Text(
-                          student.paidAmount,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Container(
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(6),
-                ),
+                decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(6)),
                 child: IconButton(
                   onPressed: () {
                     _loadStudentToForm(student);
+                    controller.setStudentForEdit(student);
                     setState(() {
-                      _selectedStudent = student;
                       _isEditing = true;
                       _isAddingNew = false;
+                      _showOnlyAttendance = false;
                       _showRightPanel = true;
                     });
                   },
-                  icon: Icon(
-                    Icons.edit_outlined,
-                    size: 18,
-                    color: Colors.blue[700],
-                  ),
+                  icon: Icon(Icons.edit_outlined, size: 18, color: Colors.blue[700]),
                   padding: const EdgeInsets.all(6),
                   constraints: const BoxConstraints(),
                 ),
               ),
+              const SizedBox(width: 10),
               Container(
-                decoration: BoxDecoration(
-                  color: Colors.red[50],
-                  borderRadius: BorderRadius.circular(6),
-                ),
+                decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(6)),
                 child: IconButton(
-                  onPressed: _isSubmitting ? null : () => _deleteStudent(student),
-                  icon: Icon(
-                    Icons.delete_outline,
-                    size: 18,
-                    color: Colors.red[400],
-                  ),
+                  onPressed: () {
+                    controller.deleteStudent(student.id!);
+                  },
+                  icon: Icon(Icons.delete_outline, size: 18, color: Colors.red[400]),
                   padding: const EdgeInsets.all(6),
                   constraints: const BoxConstraints(),
                 ),
@@ -1206,247 +595,238 @@ class _StudentScreenState extends State<StudentScreen> {
     );
   }
 
-  Widget _buildInitialsAvatar(double size, String firstName, String lastName, String gender) {
-    final initials = _getInitials(firstName, lastName);
-    final color = _getGenderColor(gender);
-
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Center(
-        child: Text(
-          initials,
-          style: TextStyle(
-            fontSize: size * 0.4,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildInfoText(IconData icon, String text, {Color? color}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: color ?? Colors.grey[500]),
+        Icon(icon, size: 12, color: color ?? Colors.grey[500]),
         const SizedBox(width: 4),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 14,
-            color: color ?? Colors.grey[600],
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
+        Text(text, style: TextStyle(fontSize: 11, color: color ?? Colors.grey[600]), maxLines: 1, overflow: TextOverflow.ellipsis),
       ],
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
+  Widget _buildFormPanel(String title) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.person_off,
-            size: 50,
-            color: Colors.grey[300],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'No Students Found',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[500],
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Click "Add New" to create a student',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[400],
-            ),
+          Row(
+            children: [
+              Icon(_isEditing ? Icons.edit_outlined : Icons.person_add, color: Colors.blue[700], size: 20),
+              const SizedBox(width: 8),
+              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+            ],
           ),
           const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: _isSubmitting
-                ? null
-                : () {
-              _resetForm();
-              setState(() {
-                _isAddingNew = true;
-                _isEditing = false;
-                _selectedStudent = null;
-                _showRightPanel = true;
-              });
-            },
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Add New Student'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue[700],
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              elevation: 0,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyRightPanel() {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: Colors.blue[50],
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.person_outline,
-                size: 60,
-                color: Colors.blue[200],
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'No Student Selected',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[700],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Select a student from the list or create a new one',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[500],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '👨‍🎓 ${_students.length} Total Students',
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey[400],
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+          Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildEmptyStatCard(
-                  icon: Icons.check_circle,
-                  label: 'Paid',
-                  count: _paidStudents,
-                  color: Colors.green,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue[200]!),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.school, size: 16, color: Colors.blue),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _formSelectedSchool?.schoolName ?? 'No school selected',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.blue),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: 12),
-                _buildEmptyStatCard(
-                  icon: Icons.warning,
-                  label: 'Pending',
-                  count: _pendingStudents,
-                  color: Colors.orange,
+                const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.center,
+                  child: GestureDetector(
+                    onTap: _pickImage,
+                    child: Container(
+                      height: 100,
+                      width: 100,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey[300]!, width: 2),
+                        image: _imageBytes != null && kIsWeb
+                            ? DecorationImage(image: MemoryImage(_imageBytes!), fit: BoxFit.cover)
+                            : _imageFile != null && !kIsWeb
+                            ? DecorationImage(image: FileImage(_imageFile!), fit: BoxFit.cover)
+                            : _existingImageUrl != null && _existingImageUrl!.isNotEmpty
+                            ? DecorationImage(image: NetworkImage(_existingImageUrl!), fit: BoxFit.cover)
+                            : null,
+                      ),
+                      child: (_imageBytes == null && _imageFile == null && (_existingImageUrl == null || _existingImageUrl!.isEmpty))
+                          ? Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.camera_alt, color: Colors.blue[700], size: 24),
+                          const SizedBox(height: 4),
+                          Text('Upload', style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+                        ],
+                      )
+                          : null,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                _buildSectionTitle('Personal Information', Colors.blue),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: _buildFormTextField(_firstNameController, 'First Name *', required: true)),
+                    const SizedBox(width: 8),
+                    Expanded(child: _buildFormTextField(_middleNameController, 'Middle Name')),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: _buildFormTextField(_lastNameController, 'Last Name *', required: true)),
+                    const SizedBox(width: 8),
+                    Expanded(child: _buildFormTextField(_dobController, 'DOB (YYYY-MM-DD) *', required: true)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: _buildDropdownField('Gender *', _genderList, _selectedGender, (val) => setState(() => _selectedGender = val!))),
+                    const SizedBox(width: 8),
+                    Expanded(child: _buildFormTextField(_studentIdCardController, 'Student ID Card *', required: true)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildSectionTitle('Parent Information', Colors.green),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: _buildFormTextField(_fatherNameController, 'Father Name')),
+                    const SizedBox(width: 8),
+                    Expanded(child: _buildFormTextField(_motherNameController, 'Mother Name')),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: _buildFormTextField(_parentPhoneController, 'Parent Phone *', required: true)),
+                    const SizedBox(width: 8),
+                    Expanded(child: _buildFormTextField(_alternativePhoneController, 'Alt Phone')),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildSectionTitle('Academic Information', Colors.orange),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: _buildDropdownField('Class *', _classList, _selectedClass, (val) => setState(() => _selectedClass = val!))),
+                    const SizedBox(width: 8),
+                    Expanded(child: _buildFormTextField(_rollNumberController, 'Roll Number')),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: _buildFormTextField(_casteCategoryController, 'Caste Category')),
+                    const SizedBox(width: 8),
+                    Expanded(child: _buildFormTextField(_adharNumberController, 'Aadhar Number')),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: _buildFormTextField(_sssmidController, 'SSSMID')),
+                    const SizedBox(width: 8),
+                    const Expanded(child: SizedBox()),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                _buildFormTextField(_addressController, 'Address', maxLines: 2),
+                const SizedBox(height: 16),
+                _buildSectionTitle('Fee & Status', Colors.red),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: _buildFormTextField(_feeAmountController, 'Fee Amount')),
+                    const SizedBox(width: 8),
+                    Expanded(child: _buildFormTextField(_paidAmountController, 'Paid Amount')),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: _buildDropdownField('Fee Status', _feeStatusList, _selectedFeeStatus, (val) => setState(() => _selectedFeeStatus = val!))),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Checkbox(
+                            value: _checkBox,
+                            onChanged: (val) => setState(() => _checkBox = val ?? false),
+                            activeColor: Colors.blue[700],
+                          ),
+                          const Text('Active Status', style: TextStyle(fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              onPressed: _isSubmitting
-                  ? null
-                  : () {
-                _resetForm();
-                setState(() {
-                  _isAddingNew = true;
-                  _isEditing = false;
-                  _selectedStudent = null;
-                  _showRightPanel = true;
-                });
-              },
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Add New Student'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue[700],
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => setState(() { _showRightPanel = false; _isAddingNew = false; _isEditing = false; _showOnlyAttendance = false; }),
+                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
+                  child: const Text('Cancel'),
                 ),
-                elevation: 0,
               ),
-            ),
-          ],
-        ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: controller.isSubmitting.value ? null : _submitForm,
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[700], foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12)),
+                  child: controller.isSubmitting.value
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : Text(_isEditing ? 'Update' : 'Save', style: const TextStyle(fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildEmptyStatCard({
-    required IconData icon,
-    required String label,
-    required int count,
-    required Color color,
-  }) {
+  Widget _buildSectionTitle(String title, MaterialColor color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: color.withOpacity(0.2),
-          width: 1,
-        ),
+        color: color[50],
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color[200]!),
       ),
-      child: Column(
-        children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(height: 4),
-          Text(
-            count.toString(),
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey[600],
-            ),
-          ),
-        ],
+      child: Text(
+        title,
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color[700]),
       ),
     );
   }
 
   Widget _buildViewPanel() {
-    if (_selectedStudent == null) return const SizedBox();
-
-    final student = _selectedStudent!;
-    final schoolColor = _getSchoolColor(student.schoolType);
+    final student = controller.selectedStudent.value;
+    if (student == null) return const SizedBox();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -1459,442 +839,488 @@ class _StudentScreenState extends State<StudentScreen> {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: _getGenderColor(student.gender).withOpacity(0.1),
+                  color: Colors.blue[50],
                   borderRadius: BorderRadius.circular(12),
+                  image: student.studentProfile != null && student.studentProfile!.isNotEmpty
+                      ? DecorationImage(image: NetworkImage(student.studentProfile!), fit: BoxFit.cover)
+                      : null,
                 ),
-                child: student.studentProfile != null && student.studentProfile!.isNotEmpty
-                    ? ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    student.studentProfile!,
-                    fit: BoxFit.cover,
-                    width: 50,
-                    height: 50,
-                    errorBuilder: (context, error, stackTrace) {
-                      return _buildInitialsAvatar(50, student.firstName, student.lastName, student.gender);
-                    },
+                child: student.studentProfile == null || student.studentProfile!.isEmpty
+                    ? Center(
+                  child: Text(
+                    '${student.firstName.isNotEmpty ? student.firstName[0] : ''}${student.lastName.isNotEmpty ? student.lastName[0] : ''}'.toUpperCase(),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue[700]),
                   ),
                 )
-                    : _buildInitialsAvatar(50, student.firstName, student.lastName, student.gender),
+                    : null,
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '${student.firstName} ${student.middleName.isNotEmpty ? student.middleName + ' ' : ''}${student.lastName}',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: schoolColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: schoolColor.withOpacity(0.3)),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.school, size: 12, color: schoolColor),
-                              const SizedBox(width: 4),
-                              Text(
-                                student.schoolType ?? 'N/A',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: schoolColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: _getFeeStatusColor(student.feeStatus).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            student.feeStatus,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: _getFeeStatusColor(student.feeStatus),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: student.checkBox ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                student.checkBox ? Icons.check_circle : Icons.cancel,
-                                size: 12,
-                                color: student.checkBox ? Colors.green : Colors.red,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                student.checkBox ? 'Active' : 'Inactive',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: student.checkBox ? Colors.green : Colors.red,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            'ID: ${student.id ?? ''}',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    Text('${student.firstName} ${student.middleName} ${student.lastName}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text(student.schoolName ?? 'N/A', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                   ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          const Divider(),
-          const SizedBox(height: 16),
-          _buildDetailRow('🏫 School', student.schoolType ?? 'N/A', color: schoolColor, isBold: true),
-          _buildDetailRow('📛 Name',
-              '${student.firstName} ${student.middleName.isNotEmpty ? student.middleName + ' ' : ''}${student.lastName}'),
-          _buildDetailRow('🎂 DOB', student.dob),
-          _buildDetailRow('⚧ Gender', student.gender),
-          _buildDetailRow('📱 Phone', student.parentPhone),
-          if (student.alternativePhone?.isNotEmpty == true)
-            _buildDetailRow('📱 Alt Phone', student.alternativePhone!),
-          _buildDetailRow('📍 Address', student.address),
-          const SizedBox(height: 12),
-          const Divider(),
-          const SizedBox(height: 12),
-          _buildDetailRow('👨 Father', student.fatherName),
-          _buildDetailRow('👩 Mother', student.motherName),
-          _buildDetailRow('📱 Parent Phone', student.parentPhone),
-          const SizedBox(height: 12),
-          const Divider(),
-          const SizedBox(height: 12),
-          _buildDetailRow('📚 Class', student.studentClass),
-          _buildDetailRow('🔢 Roll No', student.rollNumber),
-          _buildDetailRow('📋 Caste', student.casteCategory.isNotEmpty ? student.casteCategory : 'N/A'),
-          _buildDetailRow('🪪 Aadhar', student.adharNumber.isNotEmpty ? student.adharNumber : 'N/A'),
-          _buildDetailRow('🔑 SSSMID', student.sssmid.isNotEmpty ? student.sssmid : 'N/A'),
-          _buildDetailRow('🆔 Student ID', student.studentIdCard?.isNotEmpty == true ? student.studentIdCard! : 'N/A'),
-          _buildDetailRow('🆔 ID', student.id?.toString() ?? 'N/A'),
-          _buildDetailRow('📅 Created', _formatDate(student.createdAt!)),
-          _buildDetailRow('📅 Updated', _formatDate(student.updatedAt!)),
-          const SizedBox(height: 12),
-          const Divider(),
-          const SizedBox(height: 12),
-          _buildDetailRow('💰 Fee Amount', '₹${student.feeAmount}'),
-          _buildDetailRow('💵 Paid Amount', '₹${student.paidAmount}'),
-          _buildDetailRow('📊 Fee Status', student.feeStatus,
-              color: _getFeeStatusColor(student.feeStatus), isBold: true),
-          _buildDetailRow('📌 Status', student.checkBox ? 'Active ✅' : 'Inactive ❌',
-              color: student.checkBox ? Colors.green : Colors.red, isBold: true),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _showRightPanel = false;
-                      _selectedStudent = null;
-                    });
-                  },
-                  icon: const Icon(Icons.close, size: 18),
-                  label: const Text('Close'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _isSubmitting
-                      ? null
-                      : () {
-                    _loadStudentToForm(student);
-                    setState(() {
-                      _isEditing = true;
-                      _isAddingNew = false;
-                    });
-                  },
-                  icon: const Icon(Icons.edit, size: 18),
-                  label: const Text('Edit'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[700],
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    elevation: 0,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _isSubmitting ? null : () => _deleteStudent(student),
-                  icon: const Icon(Icons.delete, size: 18),
-                  label: const Text('Delete'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red[600],
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    elevation: 0,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value, {Color? color, bool isBold = false}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[600],
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 13,
-                color: color ?? Colors.black87,
-                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAddPanel() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.person_add,
-                color: Colors.blue[700],
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'Add New Student',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildFormFields(),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _isSubmitting
-                      ? null
-                      : () {
-                    setState(() {
-                      _showRightPanel = false;
-                      _isAddingNew = false;
-                      _resetForm();
-                    });
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.grey[600],
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text('Cancel'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _isSubmitting ? null : _createStudent,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[700],
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                      : const Text(
-                    'Add Student',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEditPanel() {
-    if (_selectedStudent == null) return const SizedBox();
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.edit_outlined,
-                color: Colors.blue[700],
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'Edit Student',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const Spacer(),
               IconButton(
-                onPressed: _isSubmitting
-                    ? null
-                    : () {
-                  setState(() {
-                    _isEditing = false;
-                  });
-                },
-                icon: Icon(Icons.close, color: Colors.grey[600], size: 20),
+                onPressed: () => setState(() { _showRightPanel = false; controller.selectedStudent.value = null; }),
+                icon: const Icon(Icons.close),
+              ),
+            ],
+          ),
+          const Divider(height: 32),
+
+          _buildDetailRow('ID', student.id?.toString() ?? 'N/A'),
+          _buildDetailRow('First Name', student.firstName),
+          _buildDetailRow('Middle Name', student.middleName.isNotEmpty ? student.middleName : 'N/A'),
+          _buildDetailRow('Last Name', student.lastName),
+          _buildDetailRow('Date of Birth', student.dob.isNotEmpty ? student.dob : 'N/A'),
+          _buildDetailRow('Gender', student.gender.isNotEmpty ? student.gender : 'N/A'),
+          _buildDetailRow('Class', student.studentClass.isNotEmpty ? student.studentClass : 'N/A'),
+          _buildDetailRow('Roll No', student.rollNumber.isNotEmpty ? student.rollNumber : 'N/A'),
+          _buildDetailRow('Student ID Card', student.studentIdCard ?? 'N/A'),
+          _buildDetailRow('Father Name', student.fatherName.isNotEmpty ? student.fatherName : 'N/A'),
+          _buildDetailRow('Mother Name', student.motherName.isNotEmpty ? student.motherName : 'N/A'),
+          _buildDetailRow('Parent Phone', student.parentPhone.isNotEmpty ? student.parentPhone : 'N/A'),
+          _buildDetailRow('Alt Phone', student.alternativePhone ?? 'N/A'),
+          _buildDetailRow('Aadhar Number', student.adharNumber.isNotEmpty ? student.adharNumber : 'N/A'),
+          _buildDetailRow('SSSMID', student.sssmid.isNotEmpty ? student.sssmid : 'N/A'),
+          _buildDetailRow('Caste Category', student.casteCategory.isNotEmpty ? student.casteCategory : 'N/A'),
+          _buildDetailRow('Address', student.address.isNotEmpty ? student.address : 'N/A'),
+          _buildDetailRow('Fee Amount', '₹${student.feeAmount}'),
+          _buildDetailRow('Paid Amount', '₹${student.paidAmount}'),
+          _buildDetailRow('Fee Status', student.feeStatus.isNotEmpty ? student.feeStatus : 'N/A'),
+          _buildDetailRow('Active', student.checkBox ? 'Yes' : 'No'),
+          _buildDetailRow('Created At', student.createdAt ?? 'N/A'),
+
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () {
+              _loadStudentToForm(student);
+              controller.setStudentForEdit(student);
+              setState(() { _isEditing = true; _isAddingNew = false; _showOnlyAttendance = false; });
+            },
+            icon: const Icon(Icons.edit),
+            label: const Text('Edit Student'),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 45),
+              backgroundColor: Colors.blue[700],
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAttendanceOnlyPanel() {
+    final student = controller.selectedStudent.value;
+    if (student == null) return const SizedBox();
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 10,right: 10,top: 10,bottom: 0),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(12),
+                  image: student.studentProfile != null && student.studentProfile!.isNotEmpty
+                      ? DecorationImage(image: NetworkImage(student.studentProfile!), fit: BoxFit.cover)
+                      : null,
+                ),
+                child: student.studentProfile == null || student.studentProfile!.isEmpty
+                    ? Center(
+                  child: Text(
+                    '${student.firstName.isNotEmpty ? student.firstName[0] : ''}${student.lastName.isNotEmpty ? student.lastName[0] : ''}'.toUpperCase(),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue[700]),
+                  ),
+                )
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('${student.firstName} ${student.middleName} ${student.lastName}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text(student.schoolName ?? 'N/A', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: () => setState(() { _showRightPanel = false; controller.selectedStudent.value = null; }),
+                icon: const Icon(Icons.close),
+              ),
+            ],
+          ),
+          const Divider(height: 20),
+          Expanded(
+            child: ListView(
+              children: [
+                _buildAttendanceSection(student.id!),
+                if (_selectedDate != null) ...[
+                  const SizedBox(height: 16),
+                  _buildStatusCard(studentId: student.id!, date: _selectedDate!, existing: _selectedRecord),
+                ]
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAttendanceSection(int studentId) {
+    return Obx(() {
+      final month = attController.currentMonth.value;
+      final monthName = attController.currentMonthName;
+
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.blue[100]!),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.event_available, size: 16, color: Colors.blue[700]),
+                const SizedBox(width: 6),
+                Text(
+                  'Attendance History',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.blue[700]),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                IconButton(
+                  onPressed: attController.goToPreviousMonth,
+                  icon: const Icon(Icons.chevron_left, size: 20),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      '$monthName ${month.year}',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: attController.canGoNext ? attController.goToNextMonth : null,
+                  icon: const Icon(Icons.chevron_right, size: 20),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            attController.isLoading.value
+                ? const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            )
+                : Column(
+              children: [
+                _buildCalendarWeekHeader(),
+                const SizedBox(height: 4),
+                _buildCalendarGrid(studentId),
+                const SizedBox(height: 10),
+                _buildAttendanceLegend(),
+              ],
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _buildCalendarWeekHeader() {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return Row(
+      children: days.map((d) {
+        return Expanded(
+          child: Center(
+            child: Text(
+              d,
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[600]),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildCalendarGrid(int studentId) {
+    final month = attController.currentMonth.value;
+    final firstDay = DateTime(month.year, month.month, 1);
+    final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
+    final startOffset = (firstDay.weekday - 1) % 7;
+
+    final cells = <Widget>[];
+    for (var i = 0; i < startOffset; i++) {
+      cells.add(const SizedBox());
+    }
+
+    final today = DateTime.now();
+
+    for (var day = 1; day <= daysInMonth; day++) {
+      final date = DateTime(month.year, month.month, day);
+      final record = attController.getRecordForDate(date);
+      final isToday = date.year == today.year && date.month == today.month && date.day == today.day;
+
+      cells.add(_buildDayCell(studentId, date, record, isToday));
+    }
+
+    while (cells.length % 7 != 0) {
+      cells.add(const SizedBox());
+    }
+
+    return Column(
+      children: List.generate(cells.length ~/ 7, (row) {
+        return Row(
+          children: List.generate(7, (col) {
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(2),
+                child: cells[row * 7 + col],
+              ),
+            );
+          }),
+        );
+      }),
+    );
+  }
+
+  Widget _buildDayCell(
+      int studentId,
+      DateTime date,
+      StudentAttendanceModel? record,
+      bool isToday,
+      ) {
+    Color bgColor;
+    Color textColor;
+    Border? border;
+    bool isSelected = _selectedDate == date;
+
+    if (record == null) {
+      bgColor = Colors.grey[100]!;
+      textColor = Colors.grey[700]!;
+    } else {
+      final c = _colorForStatus(record.attendanceStatus);
+      bgColor = c.withOpacity(0.15);
+      textColor = c;
+    }
+
+    if (isToday) {
+      border = Border.all(color: Colors.blue, width: 2);
+    } else if (isSelected) {
+      border = Border.all(color: Colors.orange, width: 2);
+    }
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedDate = date;
+          _selectedRecord = record;
+        });
+      },
+      child: Container(
+        height: 36,
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(6),
+          border: border,
+        ),
+        child: Center(
+          child: Text(
+            date.day.toString(),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.w500,
+              color: textColor,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAttendanceLegend() {
+    if (attController.availableStatuses.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 12,
+      runSpacing: 4,
+      children: attController.availableStatuses.map((s) {
+        return _legendDot(_colorForStatus(s).withOpacity(0.2), _prettyStatus(s));
+      }).toList(),
+    );
+  }
+
+  Widget _legendDot(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+      ],
+    );
+  }
+
+  Widget _buildStatusCard({
+    required int studentId,
+    required DateTime date,
+    StudentAttendanceModel? existing,
+  }) {
+    final statuses = ['present', 'absent', 'leave'];
+    final initialStatus = existing?.attendanceStatus ?? 'present';
+    final status = initialStatus.obs;
+    final remarksCtrl = TextEditingController(text: existing?.remarks ?? '');
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.blue[100]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${date.day} ${_monthNameFromNum(date.month)} ${date.year}',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              IconButton(
+                onPressed: () => setState(() {
+                  _selectedDate = null;
+                  _selectedRecord = null;
+                }),
+                icon: const Icon(Icons.close, size: 20),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          _buildFormFields(),
+          const Divider(),
+          const Text('Status', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Obx(() => Row(
+            children: statuses.map((s) {
+              final selected = status.value == s;
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: GestureDetector(
+                    onTap: () => status.value = s,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: selected ? _colorForStatus(s) : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: Text(
+                          _prettyStatus(s),
+                          style: TextStyle(
+                            color: selected ? Colors.white : Colors.grey[700],
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          )),
+          const SizedBox(height: 12),
+          TextField(
+            controller: remarksCtrl,
+            maxLines: 2,
+            decoration: InputDecoration(
+              labelText: 'Remarks (optional)',
+              labelStyle: const TextStyle(fontSize: 12),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              isDense: true,
+            ),
+          ),
           const SizedBox(height: 16),
           Row(
             children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _isSubmitting
-                      ? null
-                      : () {
-                    setState(() {
-                      _isEditing = false;
-                    });
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.grey[600],
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+              if (existing != null)
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () async {
+                      await attController.deleteForDate(attController.formatDate(date));
+                      setState(() {
+                        _selectedDate = null;
+                        _selectedRecord = null;
+                      });
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
+                    child: const Text('Delete'),
                   ),
-                  child: const Text('Cancel'),
                 ),
-              ),
-              const SizedBox(width: 10),
+              if (existing != null) const SizedBox(width: 8),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: _isSubmitting ? null : _updateStudent,
+                  onPressed: () async {
+                    await attController.saveOrUpdateForDate(
+                      date: attController.formatDate(date),
+                      status: status.value,
+                      remarks: remarksCtrl.text.trim(),
+                    );
+                    setState(() {
+                      _selectedDate = null;
+                      _selectedRecord = null;
+                    });
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue[700],
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                      : const Text(
-                    'Update',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
+                  child: const Text('Save'),
                 ),
               ),
             ],
@@ -1904,467 +1330,108 @@ class _StudentScreenState extends State<StudentScreen> {
     );
   }
 
-  Widget _buildFormFields() {
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Align(
-            alignment: Alignment.center,
-            child: _buildPhotoUpload(),
-          ),
-          const SizedBox(height: 16),
+  Color _colorForStatus(String s) {
+    final key = s.toLowerCase();
+    if (key == 'present') return Colors.green;
+    if (key == 'absent') return Colors.red;
+    if (key == 'leave') return Colors.blue;
+    if (key == 'holiday') return Colors.purple;
+    if (key == 'late') return Colors.orange;
 
-          // School Information (Same as Teacher Screen)
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.blue[50],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.blue[200]!),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.school, color: Colors.blue[700], size: 16),
-                const SizedBox(width: 8),
-                Text(
-                  'School Information',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.blue[700],
-                  ),
-                ),
-                const Spacer(),
-                SizedBox(
-                  width: 120,
-                  child: _buildDropdownField(
-                    '',
-                    _schoolList,
-                    _selectedSchoolForm,
-                        (value) {
-                      setState(() => _selectedSchoolForm = value!);
-                    },
-                    isCompact: true,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Personal Information
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.purple[50],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.purple[200]!),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.person, color: Colors.purple[700], size: 16),
-                const SizedBox(width: 8),
-                Text(
-                  'Personal Information',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.purple[700],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _buildFormTextField(_firstNameController, 'First Name *', Icons.person_outline,
-                    required: true),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildFormTextField(_middleNameController, 'Middle Name', Icons.person_outline),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildFormTextField(_lastNameController, 'Last Name *', Icons.person_outline,
-                    required: true),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _buildFormTextField(_dobController, 'Date of Birth * (YYYY-MM-DD)', Icons.calendar_today,
-                    required: true),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildDropdownField('Gender *', _genderList, _selectedGender, (value) {
-                  setState(() => _selectedGender = value!);
-                }),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Parent Information
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.green[50],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.green[200]!),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.family_restroom, color: Colors.green[700], size: 16),
-                const SizedBox(width: 8),
-                Text(
-                  'Parent Information',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.green[700],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _buildFormTextField(_fatherNameController, 'Father Name *', Icons.person,
-                    required: true),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildFormTextField(_motherNameController, 'Mother Name *', Icons.person,
-                    required: true),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _buildFormTextField(_parentPhoneController, 'Parent Phone *', Icons.phone,
-                    required: true),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildFormTextField(_alternativePhoneController, 'Alt Phone', Icons.phone),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Academic Information
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.orange[50],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.orange[200]!),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.school, color: Colors.orange[700], size: 16),
-                const SizedBox(width: 8),
-                Text(
-                  'Academic Information',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.orange[700],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _buildDropdownField('Class *', _classList, _selectedClass, (value) {
-                  setState(() => _selectedClass = value!);
-                }),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildFormTextField(_studentIdCardController, 'Student ID Card *', Icons.badge,
-                    required: true),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _buildFormTextField(_rollNumberController, 'Roll No', Icons.numbers,
-                    required: false),
-              ),
-              const SizedBox(width: 8),
-              Expanded(child: const SizedBox()),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Additional Information
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.teal[50],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.teal[200]!),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.contact_mail, color: Colors.teal[700], size: 16),
-                const SizedBox(width: 8),
-                Text(
-                  'Additional Information',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.teal[700],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _buildFormTextField(_casteCategoryController, 'Caste Category *', Icons.category,
-                    required: true),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildFormTextField(_adharNumberController, 'Aadhar Number *', Icons.card_membership,
-                    required: true),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _buildFormTextField(_sssmidController, 'SSSMID *', Icons.numbers,
-                    required: true),
-              ),
-              const SizedBox(width: 8),
-              Expanded(child: const SizedBox()),
-            ],
-          ),
-          const SizedBox(height: 8),
-          _buildFormTextField(_addressController, 'Address *', Icons.location_on,
-              maxLines: 2, required: true),
-          const SizedBox(height: 12),
-
-          // Fee & Status Information
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.red[50],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.red[200]!),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.payment, color: Colors.red[700], size: 16),
-                const SizedBox(width: 8),
-                Text(
-                  'Fee & Status Information',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.red[700],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _buildFormTextField(_feeAmountController, 'Fee Amount *', Icons.money,
-                    required: true),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildFormTextField(_paidAmountController, 'Paid Amount', Icons.payment),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _buildDropdownField('Fee Status *', _feeStatusList, _selectedFeeStatus, (value) {
-                  setState(() => _selectedFeeStatus = value!);
-                }),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Row(
-                  children: [
-                    Checkbox(
-                      value: _checkBox,
-                      onChanged: _isSubmitting ? null : (value) {
-                        setState(() {
-                          _checkBox = value ?? false;
-                        });
-                      },
-                      activeColor: Colors.blue[700],
-                    ),
-                    const Text(
-                      'Active',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+    final palette = [Colors.teal, Colors.indigo, Colors.cyan, Colors.brown, Colors.pink];
+    return palette[key.hashCode.abs() % palette.length];
   }
 
-  Widget _buildFormTextField(TextEditingController controller, String label,
-      IconData icon, {
-        String? hint,
-        int maxLines = 1,
-        bool required = false,
-      }) {
+  String _prettyStatus(String s) {
+    if (s.isEmpty) return '';
+    return s[0].toUpperCase() + s.substring(1);
+  }
+
+  String _monthNameFromNum(int m) {
+    const months = [
+      'January','February','March','April','May','June',
+      'July','August','September','October','November','December'
+    ];
+    return months[m - 1];
+  }
+
+  Widget _buildFormTextField(TextEditingController controller, String label, {bool required = false, int maxLines = 1}) {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(fontSize: 12, color: Colors.grey[600]),
-        hintText: hint,
-        hintStyle: TextStyle(fontSize: 12, color: Colors.grey[400]),
-        prefixIcon: Icon(icon, size: 18, color: Colors.grey[600]),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.grey[300]!),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.grey[300]!),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.blue[700]!),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        labelStyle: TextStyle(fontSize: 11, color: Colors.grey[600]),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey[300]!)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        isDense: true,
       ),
       validator: required ? (v) => v?.trim().isEmpty ?? true ? '$label is required' : null : null,
     );
   }
 
-  Widget _buildDropdownField(String label, List<String> items, String value,
-      Function(String?) onChanged, {bool isCompact = false}) {
-    String selectedValue = value;
-    if (!items.contains(selectedValue) && items.isNotEmpty) {
-      selectedValue = items.first;
-    }
-
+  Widget _buildDropdownField(String label, List<String> items, String value, Function(String?) onChanged) {
     return DropdownButtonFormField<String>(
-      value: selectedValue,
+      value: value,
       decoration: InputDecoration(
-        labelText: label.isNotEmpty ? label : null,
-        labelStyle: TextStyle(fontSize: 12, color: Colors.grey[600]),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.grey[300]!),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.grey[300]!),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.blue[700]!),
-        ),
-        contentPadding: isCompact
-            ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
-            : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        isDense: isCompact,
+        labelText: label,
+        labelStyle: TextStyle(fontSize: 11, color: Colors.grey[600]),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey[300]!)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        isDense: true,
       ),
-      items: items.map((item) {
-        return DropdownMenuItem(
-          value: item,
-          child: Text(item, style: TextStyle(fontSize: isCompact ? 12 : 13)),
-        );
-      }).toList(),
-      onChanged: _isSubmitting ? null : onChanged,
+      items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 13)))).toList(),
+      onChanged: onChanged,
     );
   }
 
-  Widget _buildPhotoUpload() {
-    return GestureDetector(
-      onTap: _isSubmitting ? null : _pickImage,
-      child: Container(
-        height: 80,
-        width: 80,
-        decoration: BoxDecoration(
-          color: Colors.grey[50],
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: Colors.grey[300]!,
-            width: 2,
-            style: BorderStyle.solid,
-          ),
-        ),
-        child: _imageBytes != null && _isWeb
-            ? ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.memory(
-            _imageBytes!,
-            fit: BoxFit.cover,
-          ),
-        )
-            : _imageFile != null && !_isWeb
-            ? ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.file(
-            _imageFile!,
-            fit: BoxFit.cover,
-          ),
-        )
-            : Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.camera_alt,
-              color: Colors.blue[700],
-              size: 24,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'Upload Photo',
-              style: TextStyle(
-                fontSize: 9,
-                color: Colors.grey[500],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 120, child: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey[600]))),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 14))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.person_off, size: 50, color: Colors.grey[300]),
+          const SizedBox(height: 12),
+          Text('No Students Found', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey[500])),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyRightPanel() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.person_outline, size: 60, color: Colors.grey[300]),
+          const SizedBox(height: 16),
+          Text('Select a student to view details', style: TextStyle(color: Colors.grey[500])),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShimmerList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(12),
+      itemCount: 5,
+      itemBuilder: (context, index) => Shimmer.fromColors(
+        baseColor: Colors.grey[300]!,
+        highlightColor: Colors.grey[100]!,
+        child: Container(height: 60, margin: const EdgeInsets.only(bottom: 8), color: Colors.white),
       ),
     );
   }

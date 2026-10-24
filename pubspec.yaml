@@ -37,6 +37,8 @@ dependencies:
   # Open URLs / Phone / Email
   url_launcher: ^6.3.2
 
+  firebase_core: ^5.0.0
+
 
 dev_dependencies:
   flutter_test:

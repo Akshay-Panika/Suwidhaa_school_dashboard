@@ -1,52 +1,58 @@
-// lib/controllers/teacher_controller.dart
+// lib/feature/teachers/controller/teacher_controller.dart
+
 import 'package:get/get.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb, Uint8List;
+import '../../../core/widget/flutter_toast.dart';
+import '../../main/model/school_type_model.dart';
 import '../model/teacher_model.dart';
 import '../repository/teacher_repository.dart';
 
 class TeacherController extends GetxController {
   final TeacherRepository _repository = TeacherRepository();
 
-  // Observable variables
   var teachers = <TeacherModel>[].obs;
   var isLoading = false.obs;
+  var isSubmitting = false.obs;
   var errorMessage = ''.obs;
   var selectedTeacher = Rx<TeacherModel?>(null);
 
-  // Filter states
-  var selectedSchoolFilter = 'All'.obs;
-  var selectedStatusFilter = 'All'.obs;
+  final selectedSchool = Rxn<SchoolTypeModel>();
 
-  // Computed getters
-  List<TeacherModel> get filteredTeachers {
-    var filtered = teachers.toList();
-
-    if (selectedSchoolFilter.value != 'All') {
-      filtered = filtered.where((t) => t.school == selectedSchoolFilter.value).toList();
-    }
-
-    if (selectedStatusFilter.value != 'All') {
-      filtered = filtered.where((t) => t.status == selectedStatusFilter.value).toList();
-    }
-
-    return filtered;
+  @override
+  void onInit() {
+    super.onInit();
+    getTeachers();
   }
 
-  int get totalTeachers => teachers.length;
-  int get activeTeachers => teachers.where((t) => t.status == 'Active').length;
-  int get inactiveTeachers => teachers.where((t) => t.status == 'Inactive').length;
-  int get onLeaveTeachers => teachers.where((t) => t.status == 'On Leave').length;
+  Future<void> getTeachers() async {
+    isLoading.value = true;
+    errorMessage.value = '';
 
-  Map<String, int> get schoolWiseStats {
-    Map<String, int> stats = {};
-    for (var teacher in teachers) {
-      stats[teacher.school] = (stats[teacher.school] ?? 0) + 1;
+    try {
+      final response = await _repository.getTeachers(
+        schoolId: selectedSchool.value?.id,
+      );
+
+      if (response.success) {
+        teachers.value = response.data;
+      } else {
+        errorMessage.value = 'Failed to load teachers';
+        FlutterToast.error(errorMessage.value);
+      }
+    } catch (e) {
+      errorMessage.value = 'Error: ${e.toString()}';
+      FlutterToast.error(errorMessage.value);
     }
-    return stats;
+
+    isLoading.value = false;
   }
 
-  // Create Teacher
+  void setSelectedSchool(SchoolTypeModel? school) {
+    selectedSchool.value = school;
+    getTeachers();
+  }
+
   Future<bool> createTeacher({
     required String firstName,
     required String lastName,
@@ -63,23 +69,20 @@ class TeacherController extends GetxController {
     String? joinDate,
     bool? checkBox,
     List<String>? subjects,
-    String? schoolType,
     File? teacherProfile,
     Uint8List? teacherProfileBytes,
   }) async {
-    isLoading.value = true;
+    if (selectedSchool.value == null) {
+      FlutterToast.warning('Please select a school first');
+      return false;
+    }
+
+    isSubmitting.value = true;
     errorMessage.value = '';
 
     try {
-      // Debug log
-      print('📤 Creating Teacher:');
-      print('   firstName: $firstName');
-      print('   lastName: $lastName');
-      print('   subjects: $subjects');
-      print('   subjects type: ${subjects.runtimeType}');
-      print('   schoolType: $schoolType');
-
-      final response = await _repository.createTeacher(
+      final teacher = TeacherModel(
+        schoolId: selectedSchool.value!.id,
         firstName: firstName,
         lastName: lastName,
         gender: gender,
@@ -91,80 +94,38 @@ class TeacherController extends GetxController {
         address: address,
         qualification: qualification,
         experience: experience,
-        salary: salary,
+        salary: salary != null ? salary.toString() : null,
         joinDate: joinDate,
-        checkBox: checkBox,
+        checkBox: checkBox ?? false,
         subjects: subjects,
-        schoolType: schoolType,
+      );
+
+      final response = await _repository.createTeacher(
+        teacher: teacher,
         teacherProfile: teacherProfile,
         teacherProfileBytes: teacherProfileBytes,
       );
 
-      print('📥 Response success: ${response.success}');
-      print('📥 Response message: ${response.message}');
-      print('📥 Response errors: ${response.errors}');
-
       if (response.success && response.data != null) {
-        teachers.insert(0, response.data!);
-        isLoading.value = false;
+        if (selectedSchool.value == null || response.data!.schoolId == selectedSchool.value!.id) {
+          teachers.insert(0, response.data!);
+        }
+        FlutterToast.success('Teacher created successfully');
         return true;
       } else {
         errorMessage.value = response.message ?? 'Failed to create teacher';
-        isLoading.value = false;
+        FlutterToast.error(errorMessage.value);
         return false;
       }
     } catch (e) {
       errorMessage.value = 'Error: ${e.toString()}';
-      isLoading.value = false;
+      FlutterToast.error(errorMessage.value);
       return false;
+    } finally {
+      isSubmitting.value = false;
     }
   }
 
-  // Get All Teachers
-  Future<void> getTeachers() async {
-    isLoading.value = true;
-    errorMessage.value = '';
-
-    try {
-      final response = await _repository.getTeachers();
-
-      if (response.success) {
-        teachers.value = response.data;
-      } else {
-        errorMessage.value = 'Failed to load teachers';
-      }
-    } catch (e) {
-      errorMessage.value = 'Error: ${e.toString()}';
-    }
-
-    isLoading.value = false;
-  }
-
-  // Get Teacher by ID
-  Future<bool> getTeacherById(int id) async {
-    isLoading.value = true;
-    errorMessage.value = '';
-
-    try {
-      final response = await _repository.getTeacherById(id);
-
-      if (response.success && response.data != null) {
-        selectedTeacher.value = response.data;
-        isLoading.value = false;
-        return true;
-      } else {
-        errorMessage.value = response.message ?? 'Teacher not found';
-        isLoading.value = false;
-        return false;
-      }
-    } catch (e) {
-      errorMessage.value = 'Error: ${e.toString()}';
-      isLoading.value = false;
-      return false;
-    }
-  }
-
-  // Update Teacher
   Future<bool> updateTeacher({
     required int id,
     required String firstName,
@@ -182,16 +143,20 @@ class TeacherController extends GetxController {
     String? joinDate,
     bool? checkBox,
     List<String>? subjects,
-    String? schoolType,
     File? teacherProfile,
     Uint8List? teacherProfileBytes,
   }) async {
-    isLoading.value = true;
+    if (selectedSchool.value == null) {
+      FlutterToast.warning('Please select a school first');
+      return false;
+    }
+
+    isSubmitting.value = true;
     errorMessage.value = '';
 
     try {
-      final response = await _repository.updateTeacher(
-        id: id,
+      final teacher = TeacherModel(
+        schoolId: selectedSchool.value!.id,
         firstName: firstName,
         lastName: lastName,
         gender: gender,
@@ -203,11 +168,15 @@ class TeacherController extends GetxController {
         address: address,
         qualification: qualification,
         experience: experience,
-        salary: salary,
+        salary: salary != null ? salary.toString() : null,
         joinDate: joinDate,
-        checkBox: checkBox,
+        checkBox: checkBox ?? false,
         subjects: subjects,
-        schoolType: schoolType,
+      );
+
+      final response = await _repository.updateTeacher(
+        id: id,
+        teacher: teacher,
         teacherProfile: teacherProfile,
         teacherProfileBytes: teacherProfileBytes,
       );
@@ -218,68 +187,50 @@ class TeacherController extends GetxController {
           teachers[index] = response.data!;
         }
         selectedTeacher.value = response.data;
-        isLoading.value = false;
+        FlutterToast.success('Teacher updated successfully');
         return true;
       } else {
         errorMessage.value = response.message ?? 'Failed to update teacher';
-        isLoading.value = false;
+        FlutterToast.error(errorMessage.value);
         return false;
       }
     } catch (e) {
       errorMessage.value = 'Error: ${e.toString()}';
-      isLoading.value = false;
+      FlutterToast.error(errorMessage.value);
       return false;
+    } finally {
+      isSubmitting.value = false;
     }
   }
 
-  // Delete Teacher
   Future<bool> deleteTeacher(int id) async {
     isLoading.value = true;
     errorMessage.value = '';
 
     try {
       final response = await _repository.deleteTeacher(id);
-
       if (response['success'] == true) {
         teachers.removeWhere((teacher) => teacher.id == id);
         if (selectedTeacher.value?.id == id) {
           selectedTeacher.value = null;
         }
-        isLoading.value = false;
+        FlutterToast.success('Teacher deleted successfully');
         return true;
       } else {
         errorMessage.value = response['message'] ?? 'Failed to delete teacher';
-        isLoading.value = false;
+        FlutterToast.error(errorMessage.value);
         return false;
       }
     } catch (e) {
       errorMessage.value = 'Error: ${e.toString()}';
-      isLoading.value = false;
+      FlutterToast.error(errorMessage.value);
       return false;
+    } finally {
+      isLoading.value = false;
     }
   }
 
-  // Set filters
-  void setSchoolFilter(String filter) {
-    selectedSchoolFilter.value = filter;
-  }
-
-  void setStatusFilter(String filter) {
-    selectedStatusFilter.value = filter;
-  }
-
-  // Select teacher
   void selectTeacher(TeacherModel? teacher) {
     selectedTeacher.value = teacher;
-  }
-
-  // Refresh
-  Future<void> refreshTeachers() async {
-    await getTeachers();
-  }
-
-  // Clear error
-  void clearError() {
-    errorMessage.value = '';
   }
 }

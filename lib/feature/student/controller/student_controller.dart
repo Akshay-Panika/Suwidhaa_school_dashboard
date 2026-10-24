@@ -1,9 +1,10 @@
-// lib/controllers/student_controller.dart
+// lib/feature/student/controller/student_controller.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb, Uint8List;
 import '../../../core/widget/flutter_toast.dart';
+import '../../main/model/school_type_model.dart'; // ✅ Import School Model
 import '../model/student_model.dart';
 import '../repository/student_repository.dart';
 
@@ -15,6 +16,9 @@ class StudentController extends GetxController {
   final isLoading = false.obs;
   final isSubmitting = false.obs;
   final selectedStudent = Rxn<StudentModel>();
+
+  // ✅ School Filter State
+  final selectedSchool = Rxn<SchoolTypeModel>();
 
   // Form controllers
   final firstNameController = TextEditingController();
@@ -71,10 +75,14 @@ class StudentController extends GetxController {
     super.onClose();
   }
 
+  // ✅ Fetch students based on the selected school filter
   Future<void> fetchStudents() async {
     try {
       isLoading.value = true;
-      final result = await _repository.getStudents();
+      // Pass selected school ID if not null
+      final result = await _repository.getStudents(
+        schoolId: selectedSchool.value?.id,
+      );
       students.assignAll(result);
     } catch (e) {
       FlutterToast.error('Failed to fetch students: $e');
@@ -83,13 +91,24 @@ class StudentController extends GetxController {
     }
   }
 
+  // ✅ Handle School Dropdown change
+  void setSelectedSchool(SchoolTypeModel? school) {
+    selectedSchool.value = school;
+    fetchStudents(); // Re-fetch when school changes
+  }
+
   Future<void> createStudent() async {
     if (!_validateForm()) return;
+    if (selectedSchool.value == null) {
+      FlutterToast.warning('Please select a school first');
+      return;
+    }
 
     try {
       isSubmitting.value = true;
 
       final student = StudentModel(
+        schoolId: selectedSchool.value!.id, // ✅ Link to selected school
         firstName: firstNameController.text.trim(),
         middleName: middleNameController.text.trim(),
         lastName: lastNameController.text.trim(),
@@ -109,7 +128,6 @@ class StudentController extends GetxController {
         feeAmount: feeAmountController.text.trim().isEmpty ? '0.00' : feeAmountController.text.trim(),
         paidAmount: paidAmountController.text.trim().isEmpty ? '0.00' : paidAmountController.text.trim(),
         checkBox: true,
-        schoolType: 'A',
         studentIdCard: studentIdCardController.text.trim(),
       );
 
@@ -119,9 +137,12 @@ class StudentController extends GetxController {
         studentProfileBytes: studentProfileBytes,
       );
 
-      students.insert(0, created);
-      _clearForm();
+      // Insert at top if it matches the current filter (or if showing all)
+      if (selectedSchool.value == null || created.schoolId == selectedSchool.value!.id) {
+        students.insert(0, created);
+      }
 
+      _clearForm();
       FlutterToast.success('Student created successfully');
       Get.back();
     } catch (e) {
@@ -133,11 +154,16 @@ class StudentController extends GetxController {
 
   Future<void> updateStudent(int id) async {
     if (!_validateForm()) return;
+    if (selectedSchool.value == null) {
+      FlutterToast.warning('Please select a school first');
+      return;
+    }
 
     try {
       isSubmitting.value = true;
 
       final student = StudentModel(
+        schoolId: selectedSchool.value!.id, // ✅ Update school linkage
         firstName: firstNameController.text.trim(),
         middleName: middleNameController.text.trim(),
         lastName: lastNameController.text.trim(),
@@ -157,7 +183,6 @@ class StudentController extends GetxController {
         feeAmount: feeAmountController.text.trim().isEmpty ? '0.00' : feeAmountController.text.trim(),
         paidAmount: paidAmountController.text.trim().isEmpty ? '0.00' : paidAmountController.text.trim(),
         checkBox: true,
-        schoolType: 'A',
         studentIdCard: studentIdCardController.text.trim(),
       );
 
@@ -174,7 +199,6 @@ class StudentController extends GetxController {
       }
 
       _clearForm();
-
       FlutterToast.success('Student updated successfully');
       Get.back();
     } catch (e) {
@@ -197,10 +221,7 @@ class StudentController extends GetxController {
             ),
             TextButton(
               onPressed: () => Get.back(result: true),
-              child: const Text(
-                'Delete',
-                style: TextStyle(color: Colors.red),
-              ),
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
             ),
           ],
         ),
@@ -223,6 +244,13 @@ class StudentController extends GetxController {
 
   void setStudentForEdit(StudentModel student) {
     selectedStudent.value = student;
+
+    // Try to match the student's school with the global list
+    if (student.schoolId != null) {
+      // Note: You may need to inject SchoolTypeController here to find the object,
+      // but for now, just clear the filter so the form works.
+      selectedSchool.value = null;
+    }
 
     firstNameController.text = student.firstName;
     middleNameController.text = student.middleName;
@@ -285,17 +313,14 @@ class StudentController extends GetxController {
       FlutterToast.warning('First name is required');
       return false;
     }
-
     if (dobController.text.trim().isEmpty) {
       FlutterToast.warning('Date of birth is required');
       return false;
     }
-
     if (parentPhoneController.text.trim().isEmpty) {
       FlutterToast.warning('Parent phone is required');
       return false;
     }
-
     return true;
   }
 }

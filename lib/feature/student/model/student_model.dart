@@ -1,7 +1,9 @@
-// lib/models/student_model.dart
+// lib/feature/student/model/student_model.dart
 class StudentModel {
   final int? id;
   final String? studentProfile;
+  final int? schoolId; // ✅ Added to track school ID
+  final String? schoolName; // ✅ Added to display school name
   final String firstName;
   final String middleName;
   final String lastName;
@@ -21,7 +23,6 @@ class StudentModel {
   final String feeAmount;
   final String paidAmount;
   final bool checkBox;
-  final String? schoolType;
   final String? studentIdCard;
   final String? createdAt;
   final String? updatedAt;
@@ -29,6 +30,8 @@ class StudentModel {
   StudentModel({
     this.id,
     this.studentProfile,
+    this.schoolId,
+    this.schoolName,
     required this.firstName,
     required this.middleName,
     required this.lastName,
@@ -48,7 +51,6 @@ class StudentModel {
     required this.feeAmount,
     required this.paidAmount,
     this.checkBox = false,
-    this.schoolType,
     this.studentIdCard,
     this.createdAt,
     this.updatedAt,
@@ -56,9 +58,19 @@ class StudentModel {
 
   // Convert from API response
   factory StudentModel.fromApiJson(Map<String, dynamic> json) {
+    // Safely parse nested school object
+    int? parsedSchoolId;
+    String? parsedSchoolName;
+    if (json['school'] != null && json['school'] is Map) {
+      parsedSchoolId = json['school']['id'] as int?;
+      parsedSchoolName = json['school']['school_name']?.toString();
+    }
+
     return StudentModel(
       id: json['id'] as int?,
       studentProfile: json['student_profile'] as String?,
+      schoolId: parsedSchoolId,
+      schoolName: parsedSchoolName,
       firstName: json['first_name']?.toString() ?? '',
       middleName: json['middle_name']?.toString() ?? '',
       lastName: json['last_name']?.toString() ?? '',
@@ -78,16 +90,16 @@ class StudentModel {
       feeAmount: json['fee_amount']?.toString() ?? '0.00',
       paidAmount: json['paid_amount']?.toString() ?? '0.00',
       checkBox: json['check_box'] ?? false,
-      schoolType: json['school_type'] as String?,
       studentIdCard: json['student_id_card'] as String?,
       createdAt: json['created_at']?.toString(),
       updatedAt: json['updated_at']?.toString(),
     );
   }
 
-  // Convert to JSON for API requests
+  // Convert to JSON for API requests (Used for both FormData & JSON)
   Map<String, dynamic> toJson() {
     return {
+      'school_id': schoolId, // ✅ Crucial for linking student to school
       'first_name': firstName,
       'middle_name': middleName,
       'last_name': lastName,
@@ -107,64 +119,7 @@ class StudentModel {
       'fee_amount': feeAmount,
       'paid_amount': paidAmount,
       'check_box': checkBox,
-      'school_type': schoolType ?? '',
       'student_id_card': studentIdCard ?? '',
     };
-  }
-
-  StudentModel copyWith({
-    int? id,
-    String? studentProfile,
-    String? firstName,
-    String? middleName,
-    String? lastName,
-    String? dob,
-    String? gender,
-    String? fatherName,
-    String? motherName,
-    String? parentPhone,
-    String? alternativePhone,
-    String? adharNumber,
-    String? sssmid,
-    String? studentClass,
-    String? rollNumber,
-    String? address,
-    String? casteCategory,
-    String? feeStatus,
-    String? feeAmount,
-    String? paidAmount,
-    bool? checkBox,
-    String? schoolType,
-    String? studentIdCard,
-    String? createdAt,
-    String? updatedAt,
-  }) {
-    return StudentModel(
-      id: id ?? this.id,
-      studentProfile: studentProfile ?? this.studentProfile,
-      firstName: firstName ?? this.firstName,
-      middleName: middleName ?? this.middleName,
-      lastName: lastName ?? this.lastName,
-      dob: dob ?? this.dob,
-      gender: gender ?? this.gender,
-      fatherName: fatherName ?? this.fatherName,
-      motherName: motherName ?? this.motherName,
-      parentPhone: parentPhone ?? this.parentPhone,
-      alternativePhone: alternativePhone ?? this.alternativePhone,
-      adharNumber: adharNumber ?? this.adharNumber,
-      sssmid: sssmid ?? this.sssmid,
-      studentClass: studentClass ?? this.studentClass,
-      rollNumber: rollNumber ?? this.rollNumber,
-      address: address ?? this.address,
-      casteCategory: casteCategory ?? this.casteCategory,
-      feeStatus: feeStatus ?? this.feeStatus,
-      feeAmount: feeAmount ?? this.feeAmount,
-      paidAmount: paidAmount ?? this.paidAmount,
-      checkBox: checkBox ?? this.checkBox,
-      schoolType: schoolType ?? this.schoolType,
-      studentIdCard: studentIdCard ?? this.studentIdCard,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-    );
   }
 }

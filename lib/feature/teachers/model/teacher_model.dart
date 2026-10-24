@@ -1,7 +1,10 @@
 // lib/models/teacher_model.dart
+// lib/feature/teachers/model/teacher_model.dart
 class TeacherModel {
   final int? id;
   final String? teacherProfile;
+  final int? schoolId; // ✅ Added
+  final String? schoolName; // ✅ Added
   final String firstName;
   final String lastName;
   final String? gender;
@@ -17,7 +20,6 @@ class TeacherModel {
   final String? joinDate;
   final bool checkBox;
   final List<String>? subjects;
-  final String? schoolType;
   final String? createdAt;
   final String? updatedAt;
 
@@ -25,12 +27,13 @@ class TeacherModel {
   String get fullName => '$firstName $lastName'.trim();
   String get idString => teacherIdCard ?? 'N/A';
   String get status => checkBox ? 'Active' : 'Inactive';
-  String get school => schoolType ?? 'A';
   String get experienceStr => experience != null ? '$experience Years' : '0 Years';
 
   TeacherModel({
     this.id,
     this.teacherProfile,
+    this.schoolId,
+    this.schoolName,
     required this.firstName,
     required this.lastName,
     this.gender,
@@ -46,15 +49,24 @@ class TeacherModel {
     this.joinDate,
     this.checkBox = false,
     this.subjects,
-    this.schoolType,
     this.createdAt,
     this.updatedAt,
   });
 
   factory TeacherModel.fromJson(Map<String, dynamic> json) {
+    // Parse nested school object
+    int? parsedSchoolId;
+    String? parsedSchoolName;
+    if (json['school'] != null && json['school'] is Map) {
+      parsedSchoolId = json['school']['id'] as int?;
+      parsedSchoolName = json['school']['school_name']?.toString();
+    }
+
     return TeacherModel(
       id: json['id'] as int?,
       teacherProfile: json['teacher_profile'] as String?,
+      schoolId: parsedSchoolId,
+      schoolName: parsedSchoolName,
       firstName: json['first_name']?.toString() ?? '',
       lastName: json['last_name']?.toString() ?? '',
       gender: json['gender']?.toString(),
@@ -72,7 +84,6 @@ class TeacherModel {
       subjects: json['subjects'] != null
           ? List<String>.from(json['subjects'])
           : null,
-      schoolType: json['school_type']?.toString(),
       createdAt: json['created_at']?.toString(),
       updatedAt: json['updated_at']?.toString(),
     );
@@ -80,6 +91,7 @@ class TeacherModel {
 
   Map<String, dynamic> toJson() {
     return {
+      'school_id': schoolId, // ✅ Crucial for backend linking
       'first_name': firstName,
       'last_name': lastName,
       if (gender != null && gender!.isNotEmpty) 'gender': gender,
@@ -95,56 +107,10 @@ class TeacherModel {
       if (joinDate != null && joinDate!.isNotEmpty) 'join_date': joinDate,
       'check_box': checkBox,
       if (subjects != null && subjects!.isNotEmpty) 'subjects': subjects,
-      if (schoolType != null && schoolType!.isNotEmpty) 'school_type': schoolType,
     };
   }
-
-  TeacherModel copyWith({
-    int? id,
-    String? teacherProfile,
-    String? firstName,
-    String? lastName,
-    String? gender,
-    String? dob,
-    String? phone,
-    String? altPhone,
-    String? email,
-    String? teacherIdCard,
-    String? address,
-    String? qualification,
-    int? experience,
-    String? salary,
-    String? joinDate,
-    bool? checkBox,
-    List<String>? subjects,
-    String? schoolType,
-    String? createdAt,
-    String? updatedAt,
-  }) {
-    return TeacherModel(
-      id: id ?? this.id,
-      teacherProfile: teacherProfile ?? this.teacherProfile,
-      firstName: firstName ?? this.firstName,
-      lastName: lastName ?? this.lastName,
-      gender: gender ?? this.gender,
-      dob: dob ?? this.dob,
-      phone: phone ?? this.phone,
-      altPhone: altPhone ?? this.altPhone,
-      email: email ?? this.email,
-      teacherIdCard: teacherIdCard ?? this.teacherIdCard,
-      address: address ?? this.address,
-      qualification: qualification ?? this.qualification,
-      experience: experience ?? this.experience,
-      salary: salary ?? this.salary,
-      joinDate: joinDate ?? this.joinDate,
-      checkBox: checkBox ?? this.checkBox,
-      subjects: subjects ?? this.subjects,
-      schoolType: schoolType ?? this.schoolType,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-    );
-  }
 }
+
 
 class TeacherListResponse {
   final bool success;
