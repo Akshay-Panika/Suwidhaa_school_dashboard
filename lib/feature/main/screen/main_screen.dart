@@ -11,6 +11,7 @@ import '../../auth/screen/auth_screen.dart';
 import '../../auth/service/auth_pref.dart';
 import '../../dashboard/screen/dashboard_screen.dart';
 import '../../student/screen/student_screen.dart';
+import '../../transport/screen/transport_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -88,91 +89,64 @@ class _MainScreenState extends State<MainScreen> {
                         icon: Icons.dashboard,
                         title: "Dashboard",
                         isActive: _selectedIndex == 0,
-                        onTap: () {
-                          setState(() {
-                            _selectedIndex = 0;
-                          });
-                        },
+                        onTap: () => setState(() => _selectedIndex = 0),
                       ),
                       _buildMenuItem(
                         icon: Icons.people,
                         title: "Students",
                         isActive: _selectedIndex == 1,
-                        onTap: () {
-                          setState(() {
-                            _selectedIndex = 1;
-                          });
-                        },
+                        onTap: () => setState(() => _selectedIndex = 1),
                       ),
                       _buildMenuItem(
                         icon: Icons.person,
                         title: "Teachers",
                         isActive: _selectedIndex == 2,
-                        onTap: () {
-                          setState(() {
-                            _selectedIndex = 2;
-                          });
-                        },
+                        onTap: () => setState(() => _selectedIndex = 2),
                       ),
                       _buildMenuItem(
                         icon: Icons.class_,
                         title: "Classes",
                         isActive: _selectedIndex == 3,
-                        onTap: () {
-                          setState(() {
-                            _selectedIndex = 3;
-                          });
-                        },
+                        onTap: () => setState(() => _selectedIndex = 3),
                       ),
                       _buildMenuItem(
                         icon: Icons.book,
                         title: "Subjects",
                         isActive: _selectedIndex == 4,
-                        onTap: () {
-                          setState(() {
-                            _selectedIndex = 4;
-                          });
-                        },
+                        onTap: () => setState(() => _selectedIndex = 4),
                       ),
                       _buildMenuItem(
                         icon: Icons.calendar_today,
                         title: "Schedule",
                         isActive: _selectedIndex == 5,
-                        onTap: () {
-                          setState(() {
-                            _selectedIndex = 5;
-                          });
-                        },
+                        onTap: () => setState(() => _selectedIndex = 5),
                       ),
+
+                      // ✅ Transport ko index 6 par rakha gaya hai
+                      _buildMenuItem(
+                        icon: Icons.directions_bus,
+                        title: "Transport",
+                        isActive: _selectedIndex == 6,
+                        onTap: () => setState(() => _selectedIndex = 6),
+                      ),
+
                       _buildMenuItem(
                         icon: Icons.attach_money,
                         title: "Fees",
-                        isActive: _selectedIndex == 6,
-                        onTap: () {
-                          setState(() {
-                            _selectedIndex = 6;
-                          });
-                        },
+                        isActive: _selectedIndex == 7,
+                        onTap: () => setState(() => _selectedIndex = 7),
                       ),
                       _buildMenuItem(
                         icon: Icons.message,
                         title: "Messages",
-                        isActive: _selectedIndex == 7,
-                        onTap: () {
-                          setState(() {
-                            _selectedIndex = 7;
-                          });
-                        },
+                        isActive: _selectedIndex == 8,
+                        onTap: () => setState(() => _selectedIndex = 8),
                       ),
                       _buildMenuItem(
                         icon: Icons.settings,
                         title: "Settings",
-                        isActive: _selectedIndex == 8,
-                        onTap: () {
-                          setState(() {
-                            _selectedIndex = 8;
-                          });
-                        },
+                        isActive: _selectedIndex == 9,
+                        onTap: () => setState(() => _selectedIndex = 9),
                       ),
 
                       SizedBox(height: 20),
@@ -201,7 +175,7 @@ class _MainScreenState extends State<MainScreen> {
               children: [
                 // Welcome Section
                 Container(
-                  margin: EdgeInsets.only(bottom: 0,left: 20,top: 20),
+                  margin: EdgeInsets.only(bottom: 0, left: 20, top: 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -225,7 +199,7 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                 ),
 
-                // Switch Logic - Only this part changed
+                // Switch Logic
                 Expanded(
                   child: _buildScreen(_selectedIndex),
                 ),
@@ -253,11 +227,13 @@ class _MainScreenState extends State<MainScreen> {
       case 5:
         return ScheduleScreen();
       case 6:
-        return FeeScreen();
+        return TransportScreen(); // ✅ Transport Index 6
       case 7:
-        return MessageScreen();
+        return FeeScreen();       // ✅ Fees Index 7
       case 8:
-        return SettingScreen();
+        return MessageScreen();   // ✅ Messages Index 8
+      case 9:
+        return SettingScreen();   // ✅ Settings Index 9
       default:
         return DashboardScreen();
     }

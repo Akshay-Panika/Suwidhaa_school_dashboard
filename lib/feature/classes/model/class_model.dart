@@ -48,11 +48,11 @@ class ClassApiModel {
     return ClassApiModel(
       id: json['id'] ?? 0,
       className: json['class_name'] ?? '',
-      schoolName: json['school']?['school_name'] ?? 'No School', // ✅ Read from nested school object
+      schoolName: json['school']?['school_name'] ?? 'No School',
       sections: (json['sections'] as List?)
           ?.map((e) => e.toString())
           .toList() ??
-          [], // ✅ Map to list of strings
+          [],
       checkBox: json['check_box'] ?? false,
       classTeacher: json['class_teacher'] != null
           ? ClassTeacherModel.fromJson(json['class_teacher'])
@@ -68,12 +68,24 @@ class ClassTeacherModel {
   final String firstName;
   final String lastName;
   final String? profileImage;
+  final String? teacherIdCard;
+  final String? gender;
+  final String? phone;
+  final String? email;
+  final String? qualification;
+  final List<String>? subjects;
 
   ClassTeacherModel({
     required this.id,
     required this.firstName,
     required this.lastName,
     this.profileImage,
+    this.teacherIdCard,
+    this.gender,
+    this.phone,
+    this.email,
+    this.qualification,
+    this.subjects,
   });
 
   factory ClassTeacherModel.fromJson(Map<String, dynamic> json) {
@@ -82,6 +94,12 @@ class ClassTeacherModel {
       firstName: json['first_name'] ?? '',
       lastName: json['last_name'] ?? '',
       profileImage: json['teacher_profile'],
+      teacherIdCard: json['teacher_id_card'],
+      gender: json['gender'],
+      phone: json['phone'],
+      email: json['email'],
+      qualification: json['qualification'],
+      subjects: json['subjects'] != null ? List<String>.from(json['subjects']) : null,
     );
   }
 

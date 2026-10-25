@@ -1,4 +1,4 @@
-// lib/feature/school_type/model/school_type_model.dart
+// lib/feature/school_type/model/transport_model.dart
 class SchoolTypeModel {
   final int? id;
   final String schoolName;

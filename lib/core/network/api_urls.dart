@@ -41,10 +41,20 @@ class ApiUrls {
   static const String subjectList = 'v1/school/subject/list/';
   static const String subjectCreate = 'v1/school/subject/create/';
   static const String subjectDetail = 'v1/school/subject/';  // + id
+  static String subjectBySchool(int schoolId) => 'v1/school/subject/list/school/$schoolId/';
 
   // Schedule endpoints
   static const String scheduleList = 'v1/school/schedule/list/';
   static const String scheduleCreate = 'v1/school/schedule/create/';
   static const String scheduleDetail = 'v1/school/schedule/';  // + id
+
+  // Transport endpoints
+  // Transport endpoints
+  static const String transportCreate = 'v1/school/transport/create/';
+  static const String transportList = 'v1/school/transport/list/';
+  static String transportBySchool(int schoolId) => 'v1/school/transport/list/school/$schoolId/';
+  static String transportDetail(int id) => 'v1/school/transport/$id/';
+  static String transportAddStudent(int id) => 'v1/school/transport/$id/students/add/';
+  static String transportRemoveStudent(int id, int studentId) => 'v1/school/transport/$id/students/$studentId/delete/';
 
 }

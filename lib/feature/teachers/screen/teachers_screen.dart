@@ -8,6 +8,7 @@ import '../../../core/widget/flutter_toast.dart';
 import '../../main/widget/school_type_filter_widget.dart';
 import '../../main/controller/school_type_controller.dart';
 import '../../main/model/school_type_model.dart';
+import '../../subjects/controller/subject_controller.dart';
 import '../controller/teacher_controller.dart';
 import '../controller/teacher_attendance_controller.dart';
 import '../model/teacher_attendance_model.dart';
@@ -24,6 +25,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
   final TeacherController controller = Get.find<TeacherController>();
   final TeacherAttendanceController attController = Get.find<TeacherAttendanceController>();
   final SchoolTypeController schoolController = Get.find<SchoolTypeController>();
+  final SubjectController subjectController = Get.find<SubjectController>();
 
   final _formKey = GlobalKey<FormState>();
   final _searchController = TextEditingController();
@@ -61,14 +63,15 @@ class _TeachersScreenState extends State<TeachersScreen> {
   Uint8List? _imageBytes;
   String? _existingImageUrl;
 
-  final List<String> _allSubjects = [
-    'Math', 'Science', 'English', 'History',
-    'Computer Science', 'Biology', 'Physics', 'Chemistry', 'Art', 'Music',
-    'Hindi', 'Social Science', 'Geography'
-  ];
-
   final List<String> _genderList = ['Male', 'Female', 'Other'];
-
+  @override
+  void initState() {
+    super.initState();
+    final schoolId = schoolController.selectedSchoolType.value?.id;
+    if (schoolId != null) {
+      subjectController.loadSubjects(schoolId);
+    }
+  }
   @override
   void dispose() {
     _firstNameController.dispose();
@@ -725,6 +728,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
                 ),
                 const SizedBox(height: 16),
 
+                // ============ SUBJECTS SECTION ============
                 _buildSectionTitle('Subjects', Colors.blue),
                 const SizedBox(height: 8),
                 Container(
@@ -734,31 +738,58 @@ class _TeachersScreenState extends State<TeachersScreen> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.grey[300]!),
                   ),
-                  child: Wrap(
-                    spacing: 4,
-                    runSpacing: 4,
-                    children: _allSubjects.map((subject) {
-                      final isSelected = _selectedSubjects.contains(subject);
-                      return FilterChip(
-                        label: Text(subject, style: const TextStyle(fontSize: 11)),
-                        selected: isSelected,
-                        onSelected: (selected) {
-                          setState(() {
-                            if (selected) {
-                              _selectedSubjects.add(subject);
-                            } else {
-                              _selectedSubjects.remove(subject);
-                            }
-                          });
-                        },
-                        selectedColor: Colors.blue[100],
-                        backgroundColor: Colors.white,
-                        labelStyle: TextStyle(color: isSelected ? Colors.blue[700] : Colors.grey[700]),
-                        side: BorderSide(color: isSelected ? Colors.blue[400]! : Colors.grey[300]!),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      );
-                    }).toList(),
-                  ),
+                  // ✅ Yahan Fix hai: Obx ke andar check karo ki school id match hai ya nahi
+                  child: Obx(() {
+                    final currentSchoolId = _formSelectedSchool?.id;
+
+                    if (currentSchoolId == null) {
+                      return const Text('Please select a school', style: TextStyle(fontSize: 12, color: Colors.grey));
+                    }
+
+                    // Agar subject controller load ho raha hai toh loading dikhao
+                    if (subjectController.isLoading.value) {
+                      return const Center(child: Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator()));
+                    }
+
+                    // Agar subjects load nahi hue hain, toh yahin se load karo
+                    final currentSubjects = subjectController.subjects;
+                    if (currentSubjects.isEmpty || currentSubjects.first.schoolId != currentSchoolId) {
+                      // Dhyan rakhein: Subject load karna async hai, isliye future microtask me dalna safe hai
+                      Future.microtask(() => subjectController.loadSubjects(currentSchoolId));
+                      return const Center(child: Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator()));
+                    }
+
+                    if (currentSubjects.isEmpty) {
+                      return const Text('No subjects found for this school', style: TextStyle(fontSize: 12, color: Colors.grey));
+                    }
+
+                    return Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: currentSubjects.map((subjectModel) {
+                        final subjectName = subjectModel.subjectName;
+                        final isSelected = _selectedSubjects.contains(subjectName);
+                        return FilterChip(
+                          label: Text(subjectName, style: const TextStyle(fontSize: 11)),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            setState(() {
+                              if (selected) {
+                                _selectedSubjects.add(subjectName);
+                              } else {
+                                _selectedSubjects.remove(subjectName);
+                              }
+                            });
+                          },
+                          selectedColor: Colors.blue[100],
+                          backgroundColor: Colors.white,
+                          labelStyle: TextStyle(color: isSelected ? Colors.blue[700] : Colors.grey[700]),
+                          side: BorderSide(color: isSelected ? Colors.blue[400]! : Colors.grey[300]!),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        );
+                      }).toList(),
+                    );
+                  }),
                 ),
                 const SizedBox(height: 16),
 
