@@ -5,6 +5,10 @@ import 'package:get/get_instance/src/bindings_interface.dart';
 import 'package:get/get_instance/src/extension_instance.dart';
 import '../feature/classes/controller/class_controller.dart';
 import '../feature/main/controller/school_type_controller.dart';
+import '../feature/schedule/controller/event_controller.dart';
+import '../feature/schedule/controller/exam_controller.dart';
+import '../feature/schedule/controller/meeting_controller.dart';
+import '../feature/schedule/controller/notice_controller.dart';
 import '../feature/schedule/controller/schedule_controller.dart';
 import '../feature/student/controller/student_attendance_controller.dart';
 import '../feature/student/controller/student_controller.dart';
@@ -29,5 +33,9 @@ class AppBindings implements Bindings {
     Get.put<ClassController>(ClassController(), permanent: true);
     Get.put<SubjectController>(SubjectController(), permanent: true);
     Get.put<TransportController>(TransportController(), permanent: true);
+    Get.put<NoticeController>(NoticeController(), permanent: true);
+    Get.put<EventController>(EventController(), permanent: true);
+    Get.put<MeetingController>(MeetingController(), permanent: true);
+    Get.put<ExamController>(ExamController(), permanent: true);
   }
 }

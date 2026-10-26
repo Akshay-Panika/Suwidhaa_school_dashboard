@@ -1,0 +1,11 @@
+// lib/feature/schedule/binding/exam_binding.dart
+
+import 'package:get/get.dart';
+import '../controller/exam_controller.dart';
+
+class ExamBinding extends Bindings {
+  @override
+  void dependencies() {
+    Get.lazyPut<ExamController>(() => ExamController());
+  }
+}

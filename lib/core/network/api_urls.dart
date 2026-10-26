@@ -49,12 +49,36 @@ class ApiUrls {
   static const String scheduleDetail = 'v1/school/schedule/';  // + id
 
   // Transport endpoints
-  // Transport endpoints
   static const String transportCreate = 'v1/school/transport/create/';
   static const String transportList = 'v1/school/transport/list/';
   static String transportBySchool(int schoolId) => 'v1/school/transport/list/school/$schoolId/';
   static String transportDetail(int id) => 'v1/school/transport/$id/';
   static String transportAddStudent(int id) => 'v1/school/transport/$id/students/add/';
   static String transportRemoveStudent(int id, int studentId) => 'v1/school/transport/$id/students/$studentId/delete/';
+
+  // Notice endpoints
+  static const String noticeCreate = 'v1/school/notice/create/';
+  static const String noticeList = 'v1/school/notice/list/';
+  static String noticeListBySchool(int schoolId) => 'v1/school/notice/list/school/$schoolId/';
+  static String noticeDetail(int pk) => 'v1/school/notice/$pk/';
+  static String noticeTogglePin(int pk) => 'v1/school/notice/$pk/toggle-pin/';
+
+  static const String eventCreate = 'v1/school/event/create/';
+  static const String eventList = 'v1/school/event/list/';
+  static String eventCreateBySchool(int schoolId) => 'v1/school/$schoolId/event/create/';
+  static String eventListBySchool(int schoolId) => 'v1/school/$schoolId/event/list/';
+  static String eventDetail(int schoolId, int pk) => 'v1/school/$schoolId/event/$pk/';
+  static String eventTogglePin(int schoolId, int pk) => 'v1/school/$schoolId/event/$pk/toggle-pin/';
+
+  // Meeting endpoints
+  static String meetingCreate(int schoolId) => 'v1/school/$schoolId/meeting/create/';
+  static String meetingList(int schoolId) => 'v1/school/$schoolId/meeting/list/';
+  static String meetingDetail(int schoolId, int id) => 'v1/school/$schoolId/meeting/$id/';
+  static String meetingDelete(int schoolId, int id) => 'v1/school/$schoolId/meeting/delete/$id/';
+
+  // Exam endpoints
+  static String examCreate(int schoolId) => 'v1/school/$schoolId/exam-timetables/create/';
+  static String examList(int schoolId) => 'v1/school/$schoolId/exam-timetables/list/';
+  static String examDetail(int schoolId, int pk) => 'v1/school/$schoolId/exam-timetables/$pk/';
 
 }
