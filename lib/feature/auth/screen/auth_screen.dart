@@ -1,3 +1,4 @@
+// lib/feature/auth/screen/auth_screen.dart
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:suwidhaa_school_dashboard/feature/main/screen/main_screen.dart';
@@ -55,22 +56,7 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _checkAlreadyLoggedIn();
-  }
-
-  Future<void> _checkAlreadyLoggedIn() async {
-    bool isLoggedIn = await AuthPref.isLoggedIn();
-    if (isLoggedIn && mounted) {
-      print('✅ User already logged in, navigating to MainScreen');
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const MainScreen()),
-      );
-    }
-  }
+  // 👇 REMOVED initState with _checkAlreadyLoggedIn
 
   @override
   void dispose() {
@@ -132,7 +118,6 @@ class _AuthScreenState extends State<AuthScreen> {
   // Send OTP
   Future<void> _sendOtp() async {
     if (_phoneFormKey.currentState!.validate()) {
-      // Validate phone number
       if (_phoneController.text.trim() != _validPhone) {
         print('❌ Phone number not registered!');
         _showToast('❌ Phone number not registered!');
@@ -314,8 +299,8 @@ class _AuthScreenState extends State<AuthScreen> {
               Expanded(
                 flex: 1,
                 child: Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
@@ -323,7 +308,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         Color(0xFF0D47A1),
                       ],
                     ),
-                    borderRadius: const BorderRadius.only(
+                    borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(24),
                       bottomLeft: Radius.circular(24),
                     ),
@@ -332,14 +317,14 @@ class _AuthScreenState extends State<AuthScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.admin_panel_settings,
                         size: 100,
                         color: Colors.white,
                       ),
                       const SizedBox(height: 30),
                       const Text(
-                        'Subidhaa',
+                        'Suwidhaa',
                         style: TextStyle(
                           fontSize: 36,
                           fontWeight: FontWeight.bold,
@@ -363,7 +348,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           color: Colors.white.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Column(
+                        child: const Column(
                           children: [
                             Text(
                               'Demo Credentials',
@@ -373,7 +358,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            SizedBox(height: 4),
                             Text(
                               'admin@gmail.com / admin@123',
                               style: TextStyle(
@@ -701,15 +686,15 @@ class _AuthScreenState extends State<AuthScreen> {
                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
               ),
             )
-                : Row(
+                : const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
+                Icon(
                   Icons.login,
                   size: 22,
                 ),
-                const SizedBox(width: 10),
-                const Text(
+                SizedBox(width: 10),
+                Text(
                   'Sign In as Admin',
                   style: TextStyle(
                     fontSize: 16,

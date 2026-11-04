@@ -1,4 +1,12 @@
+// lib/feature/message/screen/message_screen.dart
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../main/controller/school_type_controller.dart';
+import '../../main/widget/school_type_filter_widget.dart';
+import '../../teachers/controller/teacher_controller.dart';
+import '../../student/controller/student_controller.dart';
+import '../../transport/controller/transport_controller.dart';
 
 class MessageScreen extends StatefulWidget {
   const MessageScreen({super.key});
@@ -8,293 +16,289 @@ class MessageScreen extends StatefulWidget {
 }
 
 class _MessageScreenState extends State<MessageScreen> {
-  String selectedFilter = 'All';
-  Map<String, dynamic>? selectedMessage;
+  final SchoolTypeController schoolController = Get.find<SchoolTypeController>();
+  final TeacherController teacherController = Get.find<TeacherController>();
+  final StudentController studentController = Get.find<StudentController>();
+  final TransportController transportController = Get.find<TransportController>();
 
-  final List<Map<String, dynamic>> messages = const [
-    {
-      'id': 'M001',
-      'sender': 'Dr. Rajesh Kumar',
-      'subject': 'Parent-Teacher Meeting',
-      'message': 'PTM scheduled for Dec 20, 2024 at 10:00 AM. Please ensure your attendance.',
-      'time': '2 hours ago',
-      'read': true,
-      'priority': 'High',
-      'to': 'All Teachers',
-      'category': 'Meeting',
-      'date': '2024-12-20',
-    },
-    {
-      'id': 'M002',
-      'sender': 'Ms. Meera Singh',
-      'subject': 'Exam Schedule',
-      'message': 'Final exams will start from Jan 15, 2025. Please prepare the question papers.',
-      'time': '5 hours ago',
-      'read': false,
-      'priority': 'High',
-      'to': 'All Staff',
-      'category': 'Exam',
-      'date': '2024-12-15',
-    },
-    {
-      'id': 'M003',
-      'sender': 'Mr. Suresh Patel',
-      'subject': 'Class Trip',
-      'message': 'Educational trip to Science Museum on Dec 25. Parent permission required.',
-      'time': '1 day ago',
-      'read': true,
-      'priority': 'Medium',
-      'to': 'Class 8-A',
-      'category': 'Trip',
-      'date': '2024-12-25',
-    },
-    {
-      'id': 'M004',
-      'sender': 'Mrs. Anita Sharma',
-      'subject': 'Holiday Notice',
-      'message': 'School will remain closed on Dec 25 for Christmas. Happy Holidays!',
-      'time': '2 days ago',
-      'read': true,
-      'priority': 'Low',
-      'to': 'All Students',
-      'category': 'Notice',
-      'date': '2024-12-25',
-    },
-    {
-      'id': 'M005',
-      'sender': 'Mr. Vikram Reddy',
-      'subject': 'Computer Lab Schedule',
-      'message': 'Computer lab timings updated for next week. New schedule attached.',
-      'time': '3 days ago',
-      'read': false,
-      'priority': 'Medium',
-      'to': 'All Staff',
-      'category': 'Schedule',
-      'date': '2024-12-18',
-    },
-  ];
+  // Current Tab: 'Teachers', 'Students', or 'Transport'
+  String selectedTab = 'Teachers';
 
-  final List<String> filterTabs = ['All', 'Unread', 'Important', 'Sent'];
+  // Selected Contact (Full Data Map)
+  Map<String, dynamic>? selectedContact;
 
-  List<Map<String, dynamic>> get filteredMessages {
-    return messages.where((message) {
-      switch (selectedFilter) {
-        case 'Unread':
-          return !message['read'];
-        case 'Important':
-          return message['priority'] == 'High';
-        case 'Sent':
-          return message['sender'] == 'Me';
-        default:
-          return true;
-      }
-    }).toList();
+  // Search Query for the current tab
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadAllData();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _loadAllData() {
+    final school = schoolController.selectedSchoolType.value;
+    final schoolId = school?.id;
+
+    teacherController.setSelectedSchool(school);
+    studentController.setSelectedSchool(school);
+    transportController.loadTransports(schoolId);
   }
 
   @override
   Widget build(BuildContext context) {
-    final filtered = filteredMessages;
-    final unreadCount = messages.where((m) => !m['read']).length;
-    final importantCount = messages.where((m) => m['priority'] == 'High').length;
-    final totalMessages = messages.length;
+    return Obx(() {
+      List<Map<String, dynamic>> currentList = [];
 
-    return Container(
-      color: Colors.grey[50],
-      child: Row(
-        children: [
-          // Left Panel - Message List
-          Expanded(
-            flex: 2,
-            child: Column(
-              children: [
-                // Header
-                Container(
-                  padding: EdgeInsets.all(12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "Messages",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          _showComposeDialog(context);
-                        },
-                        icon: Icon(Icons.add, size: 16),
-                        label: Text("Compose", style: TextStyle(fontSize: 13)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue[700],
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+      if (selectedTab == 'Teachers') {
+        currentList = teacherController.teachers.map((t) => {
+          'id': 'T${t.id}',
+          'name': t.fullName,
+          'role': 'Teacher',
+          'phone': t.phone ?? 'N/A',
+          'email': t.email ?? 'N/A',
+          'idCard': t.teacherIdCard ?? 'N/A',
+          'profile': t.teacherProfile,
+          'school': t.schoolName ?? 'N/A',
+          'gender': t.gender ?? 'N/A',
+          'dob': t.dob ?? 'N/A',
+          'altPhone': t.altPhone ?? 'N/A',
+          'address': t.address ?? 'N/A',
+          'qualification': t.qualification ?? 'N/A',
+          'experience': t.experienceStr,
+          'salary': t.salary ?? 'N/A',
+          'joinDate': t.joinDate ?? 'N/A',
+          'subjects': t.subjects?.join(', ') ?? 'N/A',
+          'status': t.status,
+        }).toList();
+      } else if (selectedTab == 'Students') {
+        currentList = studentController.students.map((s) => {
+          'id': 'S${s.id}',
+          'name': '${s.firstName} ${s.middleName} ${s.lastName}',
+          'role': 'Student',
+          'phone': s.parentPhone,
+          'email': 'N/A',
+          'idCard': s.studentIdCard ?? 'N/A',
+          'profile': s.studentProfile,
+          'school': s.schoolName ?? 'N/A',
+          'className': s.studentClass,
+          'rollNumber': s.rollNumber,
+          'dob': s.dob,
+          'gender': s.gender,
+          'fatherName': s.fatherName,
+          'motherName': s.motherName,
+          'altPhone': s.alternativePhone ?? 'N/A',
+          'aadhar': s.adharNumber,
+          'sssmid': s.sssmid,
+          'caste': s.casteCategory,
+          'address': s.address,
+          'feeStatus': s.feeStatus,
+          'feeAmount': '₹${s.feeAmount}',
+          'paidAmount': '₹${s.paidAmount}',
+        }).toList();
+      } else if (selectedTab == 'Transport') {
+        currentList = transportController.transports.map((tr) => {
+          'id': 'D${tr.id}',
+          'name': tr.driverName,
+          'role': 'Driver',
+          'phone': tr.driverNumber,
+          'email': 'N/A',
+          'idCard': tr.vehicleNumber,
+          'profile': tr.driverImage,
+          'school': tr.school?.schoolName ?? 'N/A',
+          'route': tr.routeName ?? 'N/A',
+          'capacity': tr.capacity ?? 'N/A',
+          'transportType': tr.transportType ?? 'N/A',
+          'totalStudents': tr.studentCount.toString(),
+        }).toList();
+      }
 
-                // Stats
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12),
-                  child: Row(
-                    children: [
-                      _buildStatChip("Total", totalMessages.toString(), Colors.blue),
-                      SizedBox(width: 8),
-                      _buildStatChip("Unread", unreadCount.toString(), Colors.red),
-                      SizedBox(width: 8),
-                      _buildStatChip("Important", importantCount.toString(), Colors.orange),
-                    ],
-                  ),
-                ),
+      // Apply search filter
+      if (_searchQuery.isNotEmpty) {
+        currentList = currentList.where((c) {
+          final q = _searchQuery.toLowerCase();
+          return c['name'].toString().toLowerCase().contains(q) ||
+              c['idCard'].toString().toLowerCase().contains(q) ||
+              c['phone'].toString().toLowerCase().contains(q);
+        }).toList();
+      }
 
-                SizedBox(height: 8),
-
-                // Filter Tabs
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
+      return Container(
+        margin: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.05), blurRadius: 10)],
+        ),
+        child: Row(
+          children: [
+            // Left Panel
+            Expanded(
+              flex: 2,
+              child: Column(
+                children: [
+                  // Header
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
+                      border: Border(bottom: BorderSide(color: Colors.grey[200]!, width: 1)),
+                    ),
                     child: Row(
-                      children: filterTabs.map((tab) {
-                        return _buildFilterTab(tab, selectedFilter == tab);
-                      }).toList(),
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(8)),
+                              child: Icon(Icons.contacts, color: Colors.blue[700], size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            const Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Contact Directory', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                Text('Manage all contacts', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                              ],
+                            ),
+                          ],
+                        ),
+                        SchoolTypeFilterWidget(
+                          compact: true,
+                          value: schoolController.selectedSchoolType.value,
+                          onChanged: (school) {
+                            schoolController.selectedSchoolType.value = school;
+                            _loadAllData();
+                          },
+                        ),
+                      ],
                     ),
                   ),
-                ),
 
-                SizedBox(height: 8),
+                  // Tabs
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        _buildTabChip('Teachers', teacherController.teachers.length, Colors.blue),
+                        const SizedBox(width: 8),
+                        _buildTabChip('Students', studentController.students.length, Colors.green),
+                        const SizedBox(width: 8),
+                        _buildTabChip('Transport', transportController.transports.length, Colors.orange),
+                      ],
+                    ),
+                  ),
 
-                // Message Count
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "Showing ${filtered.length} messages",
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey[600],
+                  // Search
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Container(
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey[200]!),
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: (val) => setState(() => _searchQuery = val),
+                        decoration: InputDecoration(
+                          hintText: 'Search by name, ID, or phone...',
+                          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 12),
+                          prefixIcon: Icon(Icons.search, size: 16, color: Colors.grey[400]),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                         ),
                       ),
-                      IconButton(
-                        onPressed: () {},
-                        icon: Icon(Icons.refresh, size: 16, color: Colors.grey[400]),
-                        padding: EdgeInsets.zero,
-                        constraints: BoxConstraints(),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
 
-                SizedBox(height: 6),
+                  const SizedBox(height: 8),
 
-                // Messages List
-                Expanded(
-                  child: filtered.isEmpty
-                      ? _buildEmptyState()
-                      : ListView.builder(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    itemCount: filtered.length,
-                    itemBuilder: (context, index) {
-                      final message = filtered[index];
-                      return _buildMessageListItem(message);
-                    },
+                  // Contact List
+                  Expanded(
+                    child: (teacherController.isLoading.value || studentController.isLoading.value || transportController.isLoading.value)
+                        ? const Center(child: CircularProgressIndicator())
+                        : currentList.isEmpty
+                        ? _buildEmptyState()
+                        : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      itemCount: currentList.length,
+                      itemBuilder: (context, index) {
+                        return _buildContactListItem(currentList[index]);
+                      },
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
-          // Right Panel - Message Details
-          Container(
-            width: 320,
-            color: Colors.white,
-            child: selectedMessage != null
-                ? _buildDetailPanel(selectedMessage!)
-                : _buildEmptyDetailPanel(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatChip(String label, String value, Color color) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
+            // Right Panel
+            Container(
+              width: 480,
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: const BorderRadius.only(topRight: Radius.circular(16), bottomRight: Radius.circular(16)),
+                border: Border(left: BorderSide(color: Colors.grey[200]!, width: 1)),
+              ),
+              child: selectedContact != null
+                  ? _buildDetailPanel(selectedContact!)
+                  : _buildEmptyDetailPanel(),
             ),
-          ),
-          SizedBox(width: 4),
-          Text(
-            "$label: $value",
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilterTab(String label, bool isActive) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          selectedFilter = label;
-        });
-      },
-      child: Container(
-        margin: EdgeInsets.only(right: 6),
-        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        decoration: BoxDecoration(
-          color: isActive ? Colors.blue[700] : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isActive ? Colors.blue[700]! : Colors.grey[300]!,
-          ),
+          ],
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isActive ? Colors.white : Colors.grey[600],
-            fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-            fontSize: 11,
+      );
+    });
+  }
+
+  Widget _buildTabChip(String title, int count, Color color) {
+    final isSelected = selectedTab == title;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            selectedTab = title;
+            selectedContact = null;
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+          decoration: BoxDecoration(
+            color: isSelected ? color.withOpacity(0.1) : Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: isSelected ? color : Colors.grey[200]!),
+          ),
+          child: Column(
+            children: [
+              Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isSelected ? color : Colors.grey[600])),
+              const SizedBox(height: 2),
+              Text('$count', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: isSelected ? color : Colors.grey[800])),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildMessageListItem(Map<String, dynamic> message) {
-    final isSelected = selectedMessage != null && selectedMessage!['id'] == message['id'];
+  Widget _buildContactListItem(Map<String, dynamic> contact) {
+    final isSelected = selectedContact != null && selectedContact!['id'] == contact['id'];
+    final roleColor = _getRoleColor(contact['role']);
 
     return Container(
-      margin: EdgeInsets.only(bottom: 6),
+      margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
-        color: isSelected
-            ? Colors.blue[50]
-            : (message['read'] ? Colors.white : Colors.blue[50]),
+        color: isSelected ? Colors.blue[50] : Colors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: isSelected ? Colors.blue[300]! : Colors.grey[200]!,
@@ -304,116 +308,54 @@ class _MessageScreenState extends State<MessageScreen> {
       child: InkWell(
         onTap: () {
           setState(() {
-            selectedMessage = message;
-            // Mark as read
-            if (!message['read']) {
-              message['read'] = true;
-            }
+            selectedContact = contact;
           });
         },
         borderRadius: BorderRadius.circular(8),
         child: Padding(
-          padding: EdgeInsets.all(10),
+          padding: const EdgeInsets.all(10),
           child: Row(
             children: [
-              // Priority Indicator
-              Container(
-                width: 3,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: _getPriorityColor(message['priority']),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              SizedBox(width: 10),
-              // Avatar
               CircleAvatar(
-                radius: 18,
-                backgroundColor: _getPriorityColor(message['priority']).withOpacity(0.1),
-                child: Icon(
-                  Icons.person,
-                  color: _getPriorityColor(message['priority']),
-                  size: 18,
-                ),
+                radius: 20,
+                backgroundColor: roleColor.withOpacity(0.1),
+                backgroundImage: (contact['profile'] != null && contact['profile'].toString().isNotEmpty)
+                    ? NetworkImage(contact['profile'])
+                    : null,
+                child: (contact['profile'] == null || contact['profile'].toString().isEmpty)
+                    ? Text(
+                  _getInitials(contact['name']),
+                  style: TextStyle(color: roleColor, fontWeight: FontWeight.bold, fontSize: 14),
+                )
+                    : null,
               ),
-              SizedBox(width: 10),
-              // Content
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Expanded(
-                          child: Text(
-                            message['subject'],
-                            style: TextStyle(
-                              fontWeight: message['read'] ? FontWeight.normal : FontWeight.bold,
-                              fontSize: 13,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                        Text(contact['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                          decoration: BoxDecoration(color: roleColor.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                          child: Text(contact['role'], style: TextStyle(fontSize: 8, color: roleColor, fontWeight: FontWeight.bold)),
                         ),
-                        if (!message['read'])
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: Colors.blue,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
                       ],
                     ),
-                    Text(
-                      message['sender'],
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    Text(
-                      message['message'],
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[700],
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    Text('ID: ${contact['idCard']}', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
                   ],
                 ),
               ),
-              // Time
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    message['time'],
-                    style: TextStyle(
-                      fontSize: 9,
-                      color: Colors.grey[500],
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: _getPriorityColor(message['priority']).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      message['priority'],
-                      style: TextStyle(
-                        fontSize: 7,
-                        color: _getPriorityColor(message['priority']),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              if (contact['phone'] != 'N/A' && contact['phone'] != null)
+                IconButton(
+                  onPressed: () => _makePhoneCall(contact['phone']),
+                  icon: const Icon(Icons.phone, color: Colors.green, size: 20),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
             ],
           ),
         ),
@@ -421,198 +363,157 @@ class _MessageScreenState extends State<MessageScreen> {
     );
   }
 
-  Widget _buildDetailPanel(Map<String, dynamic> message) {
+  // 👇 UPDATED: Full Data Detail Panel
+  Widget _buildDetailPanel(Map<String, dynamic> contact) {
+    final roleColor = _getRoleColor(contact['role']);
+
     return Column(
       children: [
         // Header
         Container(
-          padding: EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.blue[50],
-            border: Border(
-              bottom: BorderSide(color: Colors.grey[200]!),
-            ),
+            color: roleColor.withOpacity(0.05),
+            border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
           ),
           child: Row(
             children: [
               CircleAvatar(
                 radius: 28,
-                backgroundColor: _getPriorityColor(message['priority']).withOpacity(0.1),
-                child: Icon(
-                  Icons.person,
-                  color: _getPriorityColor(message['priority']),
-                  size: 28,
-                ),
+                backgroundColor: roleColor.withOpacity(0.1),
+                backgroundImage: (contact['profile'] != null && contact['profile'].toString().isNotEmpty)
+                    ? NetworkImage(contact['profile'])
+                    : null,
+                child: (contact['profile'] == null || contact['profile'].toString().isEmpty)
+                    ? Text(
+                  _getInitials(contact['name']),
+                  style: TextStyle(color: roleColor, fontWeight: FontWeight.bold, fontSize: 18),
+                )
+                    : null,
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      message['subject'],
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      message['sender'],
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: _getPriorityColor(message['priority']).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            message['priority'],
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: _getPriorityColor(message['priority']),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: 6),
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: message['read'] ? Colors.green[50] : Colors.blue[50],
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            message['read'] ? 'Read' : 'Unread',
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: message['read'] ? Colors.green : Colors.blue,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    Text(contact['name'], style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text(contact['role'], style: TextStyle(fontSize: 12, color: roleColor, fontWeight: FontWeight.w600)),
                   ],
                 ),
+              ),
+              IconButton(
+                onPressed: () => setState(() => selectedContact = null),
+                icon: const Icon(Icons.close, size: 20),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
               ),
             ],
           ),
         ),
 
-        // Details
+        // Scrollable Details
         Expanded(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _detailItem("Message ID", message['id']),
-                _detailItem("From", message['sender']),
-                _detailItem("To", message['to']),
-                _detailItem("Category", message['category']),
-                _detailItem("Date", message['date']),
-                _detailItem("Time", message['time']),
-                _detailItem("Priority", message['priority']),
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _buildSectionTitle('Basic Information', roleColor),
+              _buildDetailRow('School', contact['school']),
+              if (contact['className'] != null) _buildDetailRow('Class', contact['className']),
+              if (contact['idCard'] != null) _buildDetailRow('ID / Vehicle', contact['idCard']),
 
-                SizedBox(height: 12),
-                Divider(),
-                SizedBox(height: 12),
-
-                Text(
-                  "Message",
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Container(
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey[200]!),
-                  ),
-                  child: Text(
-                    message['message'],
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[800],
-                      height: 1.5,
-                    ),
-                  ),
-                ),
-
-                SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          _showReplyDialog(context, message);
-                        },
-                        icon: Icon(Icons.reply, size: 16),
-                        label: Text("Reply", style: TextStyle(fontSize: 13)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue[700],
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          _showDeleteDialog(context, message);
-                        },
-                        icon: Icon(Icons.delete, size: 16),
-                        label: Text("Delete", style: TextStyle(fontSize: 13)),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              if (contact['role'] == 'Student') ...[
+                _buildSectionTitle('Personal Info', Colors.green),
+                _buildDetailRow('Date of Birth', contact['dob']),
+                _buildDetailRow('Gender', contact['gender']),
+                _buildDetailRow('Roll Number', contact['rollNumber']),
+                _buildDetailRow('Father Name', contact['fatherName']),
+                _buildDetailRow('Mother Name', contact['motherName']),
+                _buildDetailRow('Aadhar Number', contact['aadhar']),
+                _buildDetailRow('SSSMID', contact['sssmid']),
+                _buildDetailRow('Caste Category', contact['caste']),
+                _buildDetailRow('Address', contact['address']),
+                _buildSectionTitle('Fee Info', Colors.red),
+                _buildDetailRow('Fee Amount', contact['feeAmount']),
+                _buildDetailRow('Paid Amount', contact['paidAmount']),
+                _buildDetailRow('Fee Status', contact['feeStatus']),
               ],
-            ),
+
+              if (contact['role'] == 'Teacher') ...[
+                _buildSectionTitle('Professional Info', Colors.blue),
+                _buildDetailRow('Qualification', contact['qualification']),
+                _buildDetailRow('Experience', contact['experience']),
+                _buildDetailRow('Salary', contact['salary']),
+                _buildDetailRow('Join Date', contact['joinDate']),
+                _buildDetailRow('Subjects', contact['subjects']),
+                _buildDetailRow('Status', contact['status']),
+                _buildDetailRow('Date of Birth', contact['dob']),
+                _buildDetailRow('Gender', contact['gender']),
+                _buildDetailRow('Address', contact['address']),
+              ],
+
+              if (contact['role'] == 'Driver') ...[
+                _buildSectionTitle('Transport Info', Colors.orange),
+                _buildDetailRow('Vehicle Number', contact['idCard']),
+                _buildDetailRow('Route Name', contact['route']),
+                _buildDetailRow('Capacity', contact['capacity']),
+                _buildDetailRow('Transport Type', contact['transportType']),
+                _buildDetailRow('Total Students', contact['totalStudents']),
+              ],
+
+              const SizedBox(height: 16),
+              _buildSectionTitle('Contact Info', Colors.purple),
+              _buildDetailRow('Phone', contact['phone']),
+              _buildDetailRow('Alt Phone', contact['altPhone'] ?? 'N/A'),
+              _buildDetailRow('Email', contact['email']),
+
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _makePhoneCall(contact['phone']),
+                  icon: const Icon(Icons.call, size: 18),
+                  label: const Text("Call Now"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
           ),
         ),
       ],
     );
   }
 
-  Widget _detailItem(String label, String value) {
+  Widget _buildSectionTitle(String title, Color color) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(top: 12, bottom: 8),
       child: Row(
         children: [
+          Container(width: 4, height: 16, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+          const SizedBox(width: 8),
+          Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: color)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           SizedBox(
-            width: 80,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.grey[600],
-              ),
-            ),
+            width: 110,
+            child: Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
           ),
           Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+            child: Text(value ?? 'N/A', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
           ),
         ],
       ),
@@ -624,26 +525,10 @@ class _MessageScreenState extends State<MessageScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.email_outlined,
-            size: 48,
-            color: Colors.grey[300],
-          ),
-          SizedBox(height: 12),
-          Text(
-            "Select a Message",
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[500],
-            ),
-          ),
-          Text(
-            "Click on a message to view details",
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey[400],
-            ),
-          ),
+          Icon(Icons.contact_page, size: 48, color: Colors.grey[300]),
+          const SizedBox(height: 12),
+          Text("Select a Contact", style: TextStyle(fontSize: 16, color: Colors.grey[500])),
+          Text("Click on a contact to view full details", style: TextStyle(fontSize: 13, color: Colors.grey[400])),
         ],
       ),
     );
@@ -654,248 +539,41 @@ class _MessageScreenState extends State<MessageScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.inbox,
-            size: 48,
-            color: Colors.grey[400],
-          ),
-          SizedBox(height: 8),
-          Text(
-            "No messages found",
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
-          ),
+          Icon(Icons.people_outline, size: 48, color: Colors.grey[400]),
+          const SizedBox(height: 8),
+          Text("No contacts found", style: TextStyle(fontSize: 14, color: Colors.grey[600])),
         ],
       ),
     );
   }
 
-  Color _getPriorityColor(String priority) {
-    switch (priority) {
-      case 'High':
-        return Colors.red;
-      case 'Medium':
-        return Colors.orange;
-      case 'Low':
+  Color _getRoleColor(String role) {
+    switch (role) {
+      case 'Teacher':
+        return Colors.blue;
+      case 'Student':
         return Colors.green;
+      case 'Driver':
+        return Colors.orange;
       default:
         return Colors.grey;
     }
   }
 
-  // Compose Dialog
-  void _showComposeDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.edit, color: Colors.blue[700], size: 24),
-            SizedBox(width: 8),
-            Text("Compose Message", style: TextStyle(fontSize: 18)),
-          ],
-        ),
-        content: Container(
-          width: 450,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _formField("To", Icons.person),
-                _formField("Subject", Icons.subject),
-                _formDropdown("Priority", ['High', 'Medium', 'Low']),
-                _formField("Message", Icons.message, maxLines: 4),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Cancel", style: TextStyle(fontSize: 13)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showSnackbar(context, "Message sent successfully", Colors.green);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue[700],
-              foregroundColor: Colors.white,
-            ),
-            child: Text("Send", style: TextStyle(fontSize: 13)),
-          ),
-        ],
-      ),
-    );
+  String _getInitials(String name) {
+    if (name.isEmpty) return '?';
+    final parts = name.split(' ');
+    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    return name[0].toUpperCase();
   }
 
-  // Reply Dialog
-  void _showReplyDialog(BuildContext context, Map<String, dynamic> message) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.reply, color: Colors.blue[700], size: 24),
-            SizedBox(width: 8),
-            Text("Reply to ${message['sender']}", style: TextStyle(fontSize: 18)),
-          ],
-        ),
-        content: Container(
-          width: 400,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Colors.grey[200]!),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Subject: ${message['subject']}",
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Text(
-                      "From: ${message['sender']}",
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 12),
-              _formField("Message", Icons.message, maxLines: 3),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Cancel", style: TextStyle(fontSize: 13)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showSnackbar(context, "Reply sent successfully", Colors.green);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue[700],
-              foregroundColor: Colors.white,
-            ),
-            child: Text("Send Reply", style: TextStyle(fontSize: 13)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _formField(String label, IconData icon, {int maxLines = 1, String? initialValue}) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 8),
-      child: TextField(
-        maxLines: maxLines,
-        controller: initialValue != null ? TextEditingController(text: initialValue) : null,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(fontSize: 12),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(6),
-          ),
-          prefixIcon: Icon(icon, size: 18, color: Colors.grey[600]),
-          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          isDense: true,
-        ),
-      ),
-    );
-  }
-
-  Widget _formDropdown(String label, List<String> items, {String? initialValue}) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 8),
-      child: DropdownButtonFormField<String>(
-        value: initialValue != null ? (items.contains(initialValue) ? initialValue : null) : null,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(fontSize: 12),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(6),
-          ),
-          prefixIcon: Icon(Icons.arrow_drop_down, size: 18, color: Colors.grey[600]),
-          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-          isDense: true,
-        ),
-        items: items.map((String value) {
-          return DropdownMenuItem<String>(
-            value: value,
-            child: Text(value, style: TextStyle(fontSize: 13)),
-          );
-        }).toList(),
-        onChanged: (String? newValue) {},
-        isExpanded: true,
-      ),
-    );
-  }
-
-  void _showDeleteDialog(BuildContext context, Map<String, dynamic> message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text("Delete Message", style: TextStyle(fontSize: 18)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.warning_amber, size: 48, color: Colors.red),
-            SizedBox(height: 8),
-            Text(
-              "Are you sure you want to delete this message?",
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 15),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Cancel", style: TextStyle(fontSize: 13)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showSnackbar(context, "Message deleted successfully", Colors.red);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: Text("Delete", style: TextStyle(fontSize: 13)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSnackbar(BuildContext context, String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message, style: TextStyle(fontSize: 13)),
-        backgroundColor: color,
-        duration: Duration(seconds: 1),
-      ),
-    );
+  Future<void> _makePhoneCall(String phone) async {
+    if (phone == 'N/A' || phone.isEmpty) return;
+    final Uri launchUri = Uri(scheme: 'tel', path: phone);
+    if (await canLaunchUrl(launchUri)) {
+      await launchUrl(launchUri);
+    } else {
+      Get.snackbar('Error', 'Could not launch phone dialer');
+    }
   }
 }

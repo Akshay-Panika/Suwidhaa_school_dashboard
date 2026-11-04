@@ -261,59 +261,57 @@ class _StudentScreenState extends State<StudentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Obx(() {
-        return Container(
-          margin: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.05), blurRadius: 10)],
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                flex: _showRightPanel ? 5 : 8,
-                child: Column(
-                  children: [
-                    _buildHeader(),
-                    _buildFilterSearchBar(),
-                    Expanded(
-                      child: controller.isLoading.value
-                          ? _buildShimmerList()
-                          : _filteredStudents.isEmpty
-                          ? _buildEmptyState()
-                          : ListView.builder(
-                        padding: const EdgeInsets.all(12),
-                        itemCount: _filteredStudents.length,
-                        itemBuilder: (context, index) => _buildStudentCard(_filteredStudents[index]),
-                      ),
+    return Obx(() {
+      return Container(
+        margin: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.05), blurRadius: 10)],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              flex: _showRightPanel ? 5 : 8,
+              child: Column(
+                children: [
+                  _buildHeader(),
+                  _buildFilterSearchBar(),
+                  Expanded(
+                    child: controller.isLoading.value
+                        ? _buildShimmerList()
+                        : _filteredStudents.isEmpty
+                        ? _buildEmptyState()
+                        : ListView.builder(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: _filteredStudents.length,
+                      itemBuilder: (context, index) => _buildStudentCard(_filteredStudents[index]),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              Container(
-                width: 480,
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: const BorderRadius.only(topRight: Radius.circular(16), bottomRight: Radius.circular(16)),
-                  border: Border(left: BorderSide(color: Colors.grey[200]!, width: 1)),
-                ),
-                child: _showRightPanel
-                    ? (_isAddingNew
-                    ? _buildFormPanel('Add New Student')
-                    : _isEditing
-                    ? _buildFormPanel('Edit Student')
-                    : _showOnlyAttendance
-                    ? _buildAttendanceOnlyPanel()
-                    : _buildViewPanel())
-                    : _buildEmptyRightPanel(),
+            ),
+            Container(
+              width: 480,
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: const BorderRadius.only(topRight: Radius.circular(16), bottomRight: Radius.circular(16)),
+                border: Border(left: BorderSide(color: Colors.grey[200]!, width: 1)),
               ),
-            ],
-          ),
-        );
-      }),
-    );
+              child: _showRightPanel
+                  ? (_isAddingNew
+                  ? _buildFormPanel('Add New Student')
+                  : _isEditing
+                  ? _buildFormPanel('Edit Student')
+                  : _showOnlyAttendance
+                  ? _buildAttendanceOnlyPanel()
+                  : _buildViewPanel())
+                  : _buildEmptyRightPanel(),
+            ),
+          ],
+        ),
+      );
+    });
   }
 
   Widget _buildHeader() {
@@ -358,13 +356,10 @@ class _StudentScreenState extends State<StudentScreen> {
                 },
               ),
               const SizedBox(width: 8),
-              if (!_showRightPanel || !_isAddingNew)
+              // 👇 LOGIC ADDED: Hide "Add New" if All School is selected (school == null)
+              if (controller.selectedSchool.value != null && (!_showRightPanel || !_isAddingNew))
                 ElevatedButton.icon(
                   onPressed: () {
-                    if (controller.selectedSchool.value == null) {
-                      FlutterToast.warning('Please select a specific school from the top dropdown first.');
-                      return;
-                    }
                     _resetForm();
                     setState(() {
                       _isAddingNew = true;
@@ -464,7 +459,6 @@ class _StudentScreenState extends State<StudentScreen> {
     final isSelected = controller.selectedStudent.value?.id == student.id;
     final studentId = student.id;
 
-    // Fire-and-forget: only hits API once per student
     if (studentId != null &&
         !attController.todayByStudent.containsKey(studentId) &&
         !attController.todayLoadingFor.contains(studentId)) {
@@ -589,7 +583,6 @@ class _StudentScreenState extends State<StudentScreen> {
                   },
                   icon: Icon(Icons.calendar_month,
                       size: 18, color: Colors.blue[700]),
-                  // ✅ Only this label changed — shows attendance_status
                   label: Obx(() {
                     if (studentId == null) {
                       return Text(
@@ -601,7 +594,6 @@ class _StudentScreenState extends State<StudentScreen> {
                       );
                     }
 
-                    // Always read observables inside Obx
                     final loading =
                     attController.todayLoadingFor.contains(studentId);
                     final status = attController.todayStatusFor(studentId);

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:suwidhaa_school_dashboard/feature/classes/screen/classes_screen.dart';
-import 'package:suwidhaa_school_dashboard/feature/frees/screen/free_screen.dart';
 import 'package:suwidhaa_school_dashboard/feature/messages/screen/message_screen.dart';
 import 'package:suwidhaa_school_dashboard/feature/schedule/screen/schedule_screen.dart';
 import 'package:suwidhaa_school_dashboard/feature/settings/screen/setting_screen.dart';
@@ -11,6 +10,7 @@ import '../../auth/screen/auth_screen.dart';
 import '../../auth/service/auth_pref.dart';
 import '../../dashboard/screen/dashboard_screen.dart';
 import '../../student/screen/student_screen.dart';
+import '../../transaction/screen/transaction_screen.dart';
 import '../../transport/screen/transport_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -26,17 +26,15 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.grey[100],
 
-      body: Row(
+      body: Column(
         children: [
-          /// Sidebar Menu
           Container(
-            width: 220,
             color: Colors.white,
-            child: Column(
+            child: Row(
+              spacing: 20,
               children: [
-                // Logo/Header
                 Container(
                   padding: EdgeInsets.all(12),
                   child: Row(
@@ -77,112 +75,16 @@ class _MainScreenState extends State<MainScreen> {
                     ],
                   ),
                 ),
-
-                Divider(height: 1),
-
-                // Menu Items
-                Expanded(
-                  child: ListView(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    children: [
-                      _buildMenuItem(
-                        icon: Icons.dashboard,
-                        title: "Dashboard",
-                        isActive: _selectedIndex == 0,
-                        onTap: () => setState(() => _selectedIndex = 0),
-                      ),
-                      _buildMenuItem(
-                        icon: Icons.people,
-                        title: "Students",
-                        isActive: _selectedIndex == 1,
-                        onTap: () => setState(() => _selectedIndex = 1),
-                      ),
-                      _buildMenuItem(
-                        icon: Icons.person,
-                        title: "Teachers",
-                        isActive: _selectedIndex == 2,
-                        onTap: () => setState(() => _selectedIndex = 2),
-                      ),
-                      _buildMenuItem(
-                        icon: Icons.class_,
-                        title: "Classes",
-                        isActive: _selectedIndex == 3,
-                        onTap: () => setState(() => _selectedIndex = 3),
-                      ),
-                      _buildMenuItem(
-                        icon: Icons.book,
-                        title: "Subjects",
-                        isActive: _selectedIndex == 4,
-                        onTap: () => setState(() => _selectedIndex = 4),
-                      ),
-                      _buildMenuItem(
-                        icon: Icons.calendar_today,
-                        title: "Schedule",
-                        isActive: _selectedIndex == 5,
-                        onTap: () => setState(() => _selectedIndex = 5),
-                      ),
-
-                      // ✅ Transport ko index 6 par rakha gaya hai
-                      _buildMenuItem(
-                        icon: Icons.directions_bus,
-                        title: "Transport",
-                        isActive: _selectedIndex == 6,
-                        onTap: () => setState(() => _selectedIndex = 6),
-                      ),
-
-                      _buildMenuItem(
-                        icon: Icons.attach_money,
-                        title: "Fees",
-                        isActive: _selectedIndex == 7,
-                        onTap: () => setState(() => _selectedIndex = 7),
-                      ),
-                      _buildMenuItem(
-                        icon: Icons.message,
-                        title: "Messages",
-                        isActive: _selectedIndex == 8,
-                        onTap: () => setState(() => _selectedIndex = 8),
-                      ),
-                      _buildMenuItem(
-                        icon: Icons.settings,
-                        title: "Settings",
-                        isActive: _selectedIndex == 9,
-                        onTap: () => setState(() => _selectedIndex = 9),
-                      ),
-
-                      SizedBox(height: 20),
-
-                      // Logout
-                      _buildMenuItem(
-                        icon: Icons.logout,
-                        title: "Logout",
-                        color: Colors.red,
-                        onTap: () {
-                          _showLogoutDialog(context);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          /// Dashboard Content
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                // Welcome Section
                 Container(
-                  margin: EdgeInsets.only(bottom: 0, left: 20, top: 20),
+                  color: Colors.white,
+                  padding: EdgeInsets.all(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         "Welcome Back, Admin! 👋",
                         style: TextStyle(
-                          fontSize: 24,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.black,
                         ),
@@ -199,9 +101,118 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                 ),
 
-                // Switch Logic
+              ],
+            ),
+          ),
+          Expanded(
+            child: Row(
+              children: [
+                /// Sidebar Menu
+                Container(
+                  width: 220,
+                  color: Colors.white,
+                  child: Column(
+                    children: [
+            
+                      // Menu Items
+                      Expanded(
+                        child: ListView(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          children: [
+                            _buildMenuItem(
+                              icon: Icons.dashboard,
+                              title: "Dashboard",
+                              isActive: _selectedIndex == 0,
+                              onTap: () => setState(() => _selectedIndex = 0),
+                            ),
+                            _buildMenuItem(
+                              icon: Icons.people,
+                              title: "Students",
+                              isActive: _selectedIndex == 1,
+                              onTap: () => setState(() => _selectedIndex = 1),
+                            ),
+                            _buildMenuItem(
+                              icon: Icons.person,
+                              title: "Teachers",
+                              isActive: _selectedIndex == 2,
+                              onTap: () => setState(() => _selectedIndex = 2),
+                            ),
+                            _buildMenuItem(
+                              icon: Icons.class_,
+                              title: "Classes",
+                              isActive: _selectedIndex == 3,
+                              onTap: () => setState(() => _selectedIndex = 3),
+                            ),
+                            _buildMenuItem(
+                              icon: Icons.book,
+                              title: "Subjects",
+                              isActive: _selectedIndex == 4,
+                              onTap: () => setState(() => _selectedIndex = 4),
+                            ),
+                            _buildMenuItem(
+                              icon: Icons.calendar_today,
+                              title: "Schedule",
+                              isActive: _selectedIndex == 5,
+                              onTap: () => setState(() => _selectedIndex = 5),
+                            ),
+            
+                            // ✅ Transport ko index 6 par rakha gaya hai
+                            _buildMenuItem(
+                              icon: Icons.directions_bus,
+                              title: "Transport",
+                              isActive: _selectedIndex == 6,
+                              onTap: () => setState(() => _selectedIndex = 6),
+                            ),
+            
+                            _buildMenuItem(
+                              icon: Icons.attach_money,
+                              title: "Fees",
+                              isActive: _selectedIndex == 7,
+                              onTap: () => setState(() => _selectedIndex = 7),
+                            ),
+                            _buildMenuItem(
+                              icon: Icons.message,
+                              title: "Messages",
+                              isActive: _selectedIndex == 8,
+                              onTap: () => setState(() => _selectedIndex = 8),
+                            ),
+                            _buildMenuItem(
+                              icon: Icons.settings,
+                              title: "Settings",
+                              isActive: _selectedIndex == 9,
+                              onTap: () => setState(() => _selectedIndex = 9),
+                            ),
+            
+                            SizedBox(height: 20),
+            
+                            // Logout
+                            _buildMenuItem(
+                              icon: Icons.logout,
+                              title: "Logout",
+                              color: Colors.red,
+                              onTap: () {
+                                _showLogoutDialog(context);
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            
+                /// Dashboard Content
                 Expanded(
-                  child: _buildScreen(_selectedIndex),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      // Switch Logic
+                      Expanded(
+                        child: _buildScreen(_selectedIndex),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -229,7 +240,7 @@ class _MainScreenState extends State<MainScreen> {
       case 6:
         return TransportScreen(); // ✅ Transport Index 6
       case 7:
-        return FeeScreen();       // ✅ Fees Index 7
+        return TransactionScreen();       // ✅ Fees Index 7
       case 8:
         return MessageScreen();   // ✅ Messages Index 8
       case 9:
@@ -249,7 +260,7 @@ class _MainScreenState extends State<MainScreen> {
   }) {
     return Material(
       color: isActive ? Colors.blue[50] : Colors.transparent,
-      borderRadius: BorderRadius.circular(8),
+      // borderRadius: BorderRadius.circular(8),
       child: ListTile(
         leading: Icon(
           icon,
@@ -266,9 +277,6 @@ class _MainScreenState extends State<MainScreen> {
         ),
         onTap: onTap,
         tileColor: isActive ? Colors.blue[50] : Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       ),
     );

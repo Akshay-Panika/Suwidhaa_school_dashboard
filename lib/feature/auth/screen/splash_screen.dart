@@ -1,6 +1,8 @@
+// lib/feature/auth/screen/splash_screen.dart
 import 'package:flutter/material.dart';
-
+import '../service/auth_pref.dart';
 import 'auth_screen.dart';
+import '../../main/screen/main_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -13,12 +15,31 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 2), () {
+    _checkSession();
+  }
+
+  Future<void> _checkSession() async {
+    // Show splash for a minimum of 2 seconds
+    await Future.delayed(const Duration(seconds: 2));
+
+    // Check if user is logged in
+    bool isLoggedIn = await AuthPref.isLoggedIn();
+
+    if (!mounted) return;
+
+    if (isLoggedIn) {
+      // Go directly to MainScreen
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const MainScreen()),
+      );
+    } else {
+      // Go to AuthScreen
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const AuthScreen()),
       );
-    });
+    }
   }
 
   @override
@@ -30,7 +51,6 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Text Logo
             const Text(
               'Suwidhaa',
               style: TextStyle(
@@ -48,7 +68,7 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
             ),
             const SizedBox(height: 10),
-             Text(
+            Text(
               'Your Tagline Here',
               style: TextStyle(
                 fontSize: 18,
@@ -56,7 +76,10 @@ class _SplashScreenState extends State<SplashScreen> {
                 letterSpacing: 4,
               ),
             ),
-
+            const SizedBox(height: 30),
+            const CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.indigo),
+            ),
           ],
         ),
       ),

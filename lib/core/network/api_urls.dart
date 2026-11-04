@@ -80,5 +80,29 @@ class ApiUrls {
   static String examCreate(int schoolId) => 'v1/school/$schoolId/exam-timetables/create/';
   static String examList(int schoolId) => 'v1/school/$schoolId/exam-timetables/list/';
   static String examDetail(int schoolId, int pk) => 'v1/school/$schoolId/exam-timetables/$pk/';
+  
+  // ===== Teacher Salary =====
+  static const String teacherSalaryList = 'v1/school/teacher/salary/list/';
+  static String teacherSalaryListBySchool(int schoolId) => 'v1/school/teacher/salary/list/school/$schoolId/';
+  static const String teacherSalaryTransactionCreate = 'v1/school/teacher/salary/transaction/create/';
+  static String teacherSalaryTransactionDetail(int teacherId, int transactionId) => 'v1/school/teacher/salary/transaction/$teacherId/$transactionId/';
+  static String teacherSalaryTransactionHistory(int teacherId) => 'v1/school/teacher/salary/transaction/history/$teacherId/';
+
+  // ===== Student Fee =====
+  static const String studentFeeList = 'v1/school/student/fee/list/';
+  static String studentFeeListBySchool(int schoolId) => 'v1/school/student/fee/list/school/$schoolId/';
+  static const String studentFeeTransactionCreate = 'v1/school/student/fee/transaction/create/';
+  static String studentFeeTransactionHistory(int studentId) => 'v1/school/student/fee/transaction/history/$studentId/';
+  static String studentFeeTransactionDetail(int studentId, int transactionId) => 'v1/school/student/fee/transaction/$studentId/$transactionId/';
+
+  // Student Leave endpoints
+  static const String studentLeaveList = 'v1/school/student-leave/list/';
+  static const String studentLeaveApproval = 'v1/school/student-leave/approval/';
+  static const String studentLeaveCreate = 'v1/school/student-leave/create/';
+  static const String studentLeaveDetail = 'v1/school/student-leave/';
+  static const String studentLeaveByIdCard = 'v1/school/student-leave/list/';
+  static String studentLeaveByClass(String className) =>
+      'v1/school/student-leave/list/class/${Uri.encodeComponent(className)}/';
+
 
 }

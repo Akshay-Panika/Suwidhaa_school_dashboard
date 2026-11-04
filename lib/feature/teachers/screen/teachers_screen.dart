@@ -248,59 +248,57 @@ class _TeachersScreenState extends State<TeachersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Obx(() {
-        return Container(
-          margin: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.05), blurRadius: 10)],
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                flex: _showRightPanel ? 5 : 8,
-                child: Column(
-                  children: [
-                    _buildHeader(),
-                    _buildFilterSearchBar(),
-                    Expanded(
-                      child: controller.isLoading.value
-                          ? _buildShimmerList()
-                          : _filteredTeachers.isEmpty
-                          ? _buildEmptyState()
-                          : ListView.builder(
-                        padding: const EdgeInsets.all(12),
-                        itemCount: _filteredTeachers.length,
-                        itemBuilder: (context, index) => _buildTeacherCard(_filteredTeachers[index]),
-                      ),
+    return Obx(() {
+      return Container(
+        margin: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.05), blurRadius: 10)],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              flex: _showRightPanel ? 5 : 8,
+              child: Column(
+                children: [
+                  _buildHeader(),
+                  _buildFilterSearchBar(),
+                  Expanded(
+                    child: controller.isLoading.value
+                        ? _buildShimmerList()
+                        : _filteredTeachers.isEmpty
+                        ? _buildEmptyState()
+                        : ListView.builder(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: _filteredTeachers.length,
+                      itemBuilder: (context, index) => _buildTeacherCard(_filteredTeachers[index]),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              Container(
-                width: 480,
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: const BorderRadius.only(topRight: Radius.circular(16), bottomRight: Radius.circular(16)),
-                  border: Border(left: BorderSide(color: Colors.grey[200]!, width: 1)),
-                ),
-                child: _showRightPanel
-                    ? (_isAddingNew
-                    ? _buildFormPanel('Add New Teacher')
-                    : _isEditing
-                    ? _buildFormPanel('Edit Teacher')
-                    : _showOnlyAttendance
-                    ? _buildAttendanceOnlyPanel()
-                    : _buildViewPanel())
-                    : _buildEmptyRightPanel(),
+            ),
+            Container(
+              width: 480,
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: const BorderRadius.only(topRight: Radius.circular(16), bottomRight: Radius.circular(16)),
+                border: Border(left: BorderSide(color: Colors.grey[200]!, width: 1)),
               ),
-            ],
-          ),
-        );
-      }),
-    );
+              child: _showRightPanel
+                  ? (_isAddingNew
+                  ? _buildFormPanel('Add New Teacher')
+                  : _isEditing
+                  ? _buildFormPanel('Edit Teacher')
+                  : _showOnlyAttendance
+                  ? _buildAttendanceOnlyPanel()
+                  : _buildViewPanel())
+                  : _buildEmptyRightPanel(),
+            ),
+          ],
+        ),
+      );
+    });
   }
 
   Widget _buildHeader() {
@@ -345,13 +343,10 @@ class _TeachersScreenState extends State<TeachersScreen> {
                 },
               ),
               const SizedBox(width: 8),
-              if (!_showRightPanel || !_isAddingNew)
+              // 👇 LOGIC ADDED: Hide "Add New" if All School is selected (school == null)
+              if (controller.selectedSchool.value != null && (!_showRightPanel || !_isAddingNew))
                 ElevatedButton.icon(
                   onPressed: () {
-                    if (controller.selectedSchool.value == null) {
-                      FlutterToast.warning('Please select a specific school from the top dropdown first.');
-                      return;
-                    }
                     _resetForm();
                     setState(() {
                       _isAddingNew = true;

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../main/controller/school_type_controller.dart';
 import '../../main/widget/school_type_filter_widget.dart';
-import '../../teachers/controller/teacher_controller.dart'; // ✅ Import TeacherController
+import '../../teachers/controller/teacher_controller.dart';
 import '../controller/class_controller.dart';
 import '../model/class_model.dart';
 
@@ -16,63 +16,61 @@ class ClassesScreen extends StatelessWidget {
     final schoolController = Get.find<SchoolTypeController>();
 
     return Obx(() {
-      return Scaffold(
-        body: Container(
-          margin: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(color: Colors.grey.withOpacity(0.05), spreadRadius: 1, blurRadius: 10),
-            ],
-          ),
-          child: Row(
-            children: [
-              // Left Panel
-              Expanded(
-                flex: controller.showRightPanel.value ? 5 : 8,
-                child: Column(
-                  children: [
-                    _buildHeader(controller, schoolController),
-                    _buildSearchBar(controller),
-                    Expanded(
-                      child: controller.isLoading.value
-                          ? const Center(child: CircularProgressIndicator())
-                          : schoolController.selectedSchoolType.value == null
-                          ? _buildSelectSchoolState()
-                          : controller.filteredClasses.isEmpty
-                          ? _buildEmptyState(controller)
-                          : ListView.builder(
-                        padding: const EdgeInsets.all(12),
-                        itemCount: controller.filteredClasses.length,
-                        itemBuilder: (context, index) {
-                          return _buildClassCard(controller, controller.filteredClasses[index]);
-                        },
-                      ),
+      return Container(
+        margin: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(color: Colors.grey.withOpacity(0.05), spreadRadius: 1, blurRadius: 10),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Left Panel
+            Expanded(
+              flex: controller.showRightPanel.value ? 5 : 8,
+              child: Column(
+                children: [
+                  _buildHeader(controller, schoolController),
+                  _buildSearchBar(controller),
+                  Expanded(
+                    child: controller.isLoading.value
+                        ? const Center(child: CircularProgressIndicator())
+                        : schoolController.selectedSchoolType.value == null
+                        ? _buildSelectSchoolState()
+                        : controller.filteredClasses.isEmpty
+                        ? _buildEmptyState(controller)
+                        : ListView.builder(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: controller.filteredClasses.length,
+                      itemBuilder: (context, index) {
+                        return _buildClassCard(controller, controller.filteredClasses[index]);
+                      },
                     ),
-                  ],
-                ),
-              ),
-
-              // Right Panel
-              Container(
-                width: 480,
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(16),
-                    bottomRight: Radius.circular(16),
                   ),
-                  border: Border(left: BorderSide(color: Colors.grey[200]!, width: 1)),
-                ),
-                child: controller.showRightPanel.value
-                    ? (controller.isAddingNew.value
-                    ? _buildAddPanel(controller, schoolController)
-                    : _buildViewPanel(controller, schoolController))
-                    : _buildEmptyRightPanel(controller),
+                ],
               ),
-            ],
-          ),
+            ),
+
+            // Right Panel
+            Container(
+              width: 480,
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
+                ),
+                border: Border(left: BorderSide(color: Colors.grey[200]!, width: 1)),
+              ),
+              child: controller.showRightPanel.value
+                  ? (controller.isAddingNew.value
+                  ? _buildAddPanel(controller, schoolController)
+                  : _buildViewPanel(controller, schoolController))
+                  : _buildEmptyRightPanel(controller),
+            ),
+          ],
         ),
       );
     });
@@ -118,7 +116,8 @@ class ClassesScreen extends StatelessWidget {
                 },
               ),
               const SizedBox(width: 8),
-              if (!controller.showRightPanel.value || !controller.isAddingNew.value)
+              // 👇 LOGIC ADDED: Hide "Add New" if All School is selected (school == null)
+              if (schoolController.selectedSchoolType.value != null && (!controller.showRightPanel.value || !controller.isAddingNew.value))
                 ElevatedButton.icon(
                   onPressed: controller.startAddNew,
                   icon: const Icon(Icons.add, size: 18),

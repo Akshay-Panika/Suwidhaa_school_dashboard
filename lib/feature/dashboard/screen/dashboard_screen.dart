@@ -188,67 +188,65 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     final attendance = _getAttendanceStats();
 
-    return Scaffold(
-      body: Container(
-        margin: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.06),
-              spreadRadius: 1,
-              blurRadius: 12,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            // Left Panel - Main Content
-            Expanded(
-              flex: _showRightPanel ? 5 : 8,
-              child: Column(
-                children: [
-                  _buildHeader(attendance),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          // ❌ _buildQuickStats removed from here
-                          _buildAttendanceOverview(attendance),
-                          const SizedBox(height: 16),
-                          _buildNoticeBoard(),
-                        ],
-                      ),
+    return  Container(
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.06),
+            spreadRadius: 1,
+            blurRadius: 12,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Left Panel - Main Content
+          Expanded(
+            flex: _showRightPanel ? 5 : 8,
+            child: Column(
+              children: [
+                _buildHeader(attendance),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        // ❌ _buildQuickStats removed from here
+                        _buildAttendanceOverview(attendance),
+                        const SizedBox(height: 16),
+                        _buildNoticeBoard(),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
 
-            // Right Panel
-            Container(
-              width: 480,
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: const BorderRadius.only(
-                  topRight: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
-                ),
-                border: Border(
-                  left: BorderSide(color: Colors.grey[200]!, width: 1),
-                ),
+          // Right Panel
+          Container(
+            width: 480,
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: const BorderRadius.only(
+                topRight: Radius.circular(16),
+                bottomRight: Radius.circular(16),
               ),
-              child: _showRightPanel
-                  ? (_selectedActivity != null
-                  ? _buildDetailPanel()
-                  : _buildRightPanelContent())
-                  : _buildLiveRequestsPanel(),
+              border: Border(
+                left: BorderSide(color: Colors.grey[200]!, width: 1),
+              ),
             ),
-          ],
-        ),
+            child: _showRightPanel
+                ? (_selectedActivity != null
+                ? _buildDetailPanel()
+                : _buildRightPanelContent())
+                : _buildLiveRequestsPanel(),
+          ),
+        ],
       ),
     );
   }

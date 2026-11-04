@@ -49,61 +49,59 @@ class _TransportScreenState extends State<TransportScreen> {
     final studentController = Get.find<StudentController>();
 
     return Obx(() {
-      return Scaffold(
-        body: Container(
-          margin: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(color: Colors.grey.withOpacity(0.05), spreadRadius: 1, blurRadius: 10),
-            ],
-          ),
-          child: Row(
-            children: [
-              // Left Panel
-              Expanded(
-                flex: controller.showRightPanel.value ? 5 : 8,
-                child: Column(
-                  children: [
-                    _buildHeader(controller, schoolController),
-                    _buildSearchBar(controller),
-                    Expanded(
-                      child: controller.isLoading.value
-                          ? const Center(child: CircularProgressIndicator())
-                          : controller.filteredTransports.isEmpty
-                          ? _buildEmptyState(controller)
-                          : ListView.builder(
-                        padding: const EdgeInsets.all(12),
-                        itemCount: controller.filteredTransports.length,
-                        itemBuilder: (context, index) {
-                          return _buildTransportCard(controller, controller.filteredTransports[index]);
-                        },
-                      ),
+      return Container(
+        margin: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(color: Colors.grey.withOpacity(0.05), spreadRadius: 1, blurRadius: 10),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Left Panel
+            Expanded(
+              flex: controller.showRightPanel.value ? 5 : 8,
+              child: Column(
+                children: [
+                  _buildHeader(controller, schoolController),
+                  _buildSearchBar(controller),
+                  Expanded(
+                    child: controller.isLoading.value
+                        ? const Center(child: CircularProgressIndicator())
+                        : controller.filteredTransports.isEmpty
+                        ? _buildEmptyState(controller)
+                        : ListView.builder(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: controller.filteredTransports.length,
+                      itemBuilder: (context, index) {
+                        return _buildTransportCard(controller, controller.filteredTransports[index]);
+                      },
                     ),
-                  ],
-                ),
-              ),
-
-              // Right Panel
-              Container(
-                width: 480,
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(16),
-                    bottomRight: Radius.circular(16),
                   ),
-                  border: Border(left: BorderSide(color: Colors.grey[200]!, width: 1)),
-                ),
-                child: controller.showRightPanel.value
-                    ? (controller.isAddingNew.value || controller.isEditing.value
-                    ? _buildFormPanel(controller, schoolController)
-                    : _buildViewPanel(controller, studentController))
-                    : _buildEmptyRightPanel(),
+                ],
               ),
-            ],
-          ),
+            ),
+
+            // Right Panel
+            Container(
+              width: 480,
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
+                ),
+                border: Border(left: BorderSide(color: Colors.grey[200]!, width: 1)),
+              ),
+              child: controller.showRightPanel.value
+                  ? (controller.isAddingNew.value || controller.isEditing.value
+                  ? _buildFormPanel(controller, schoolController)
+                  : _buildViewPanel(controller, studentController))
+                  : _buildEmptyRightPanel(),
+            ),
+          ],
         ),
       );
     });
@@ -155,7 +153,8 @@ class _TransportScreenState extends State<TransportScreen> {
                 },
               ),
               const SizedBox(width: 8),
-              if (!controller.showRightPanel.value || (!controller.isAddingNew.value && !controller.isEditing.value))
+              // 👇 LOGIC ADDED: Hide "Add New" if All School is selected (school == null)
+              if (schoolController.selectedSchoolType.value != null && (!controller.showRightPanel.value || (!controller.isAddingNew.value && !controller.isEditing.value)))
                 ElevatedButton.icon(
                   onPressed: () {
                     setState(() {

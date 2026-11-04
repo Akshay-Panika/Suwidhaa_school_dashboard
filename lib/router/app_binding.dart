@@ -12,9 +12,12 @@ import '../feature/schedule/controller/notice_controller.dart';
 import '../feature/schedule/controller/schedule_controller.dart';
 import '../feature/student/controller/student_attendance_controller.dart';
 import '../feature/student/controller/student_controller.dart';
+import '../feature/student_leave/binding/student_leave_binding.dart';
 import '../feature/subjects/controller/subject_controller.dart';
 import '../feature/teachers/controller/teacher_attendance_controller.dart';
 import '../feature/teachers/controller/teacher_controller.dart';
+import '../feature/transaction/controller/student_fee_controller.dart';
+import '../feature/transaction/controller/teacher_salary_controller.dart';
 import '../feature/transport/controller/transport_controller.dart';
 
 class AppBindings implements Bindings {
@@ -37,5 +40,9 @@ class AppBindings implements Bindings {
     Get.put<EventController>(EventController(), permanent: true);
     Get.put<MeetingController>(MeetingController(), permanent: true);
     Get.put<ExamController>(ExamController(), permanent: true);
+    Get.put<TeacherSalaryController>(TeacherSalaryController(), permanent: true);
+    Get.put<StudentFeeController>(StudentFeeController(), permanent: true);
+    Get.put<StudentLeaveBinding>(StudentLeaveBinding(), permanent: true);
+
   }
 }
