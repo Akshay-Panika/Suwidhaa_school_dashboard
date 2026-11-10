@@ -5,6 +5,7 @@ import 'package:get/get_instance/src/bindings_interface.dart';
 import 'package:get/get_instance/src/extension_instance.dart';
 import '../feature/classes/controller/class_controller.dart';
 import '../feature/main/controller/school_type_controller.dart';
+import '../feature/record_video/controller/record_video_controller.dart';
 import '../feature/schedule/controller/event_controller.dart';
 import '../feature/schedule/controller/exam_controller.dart';
 import '../feature/schedule/controller/meeting_controller.dart';
@@ -43,6 +44,8 @@ class AppBindings implements Bindings {
     Get.put<TeacherSalaryController>(TeacherSalaryController(), permanent: true);
     Get.put<StudentFeeController>(StudentFeeController(), permanent: true);
     Get.put<StudentLeaveBinding>(StudentLeaveBinding(), permanent: true);
+    Get.put<RecordVideoController>(RecordVideoController(), permanent: true);
+
 
   }
 }

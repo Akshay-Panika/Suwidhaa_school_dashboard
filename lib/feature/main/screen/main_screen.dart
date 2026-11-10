@@ -13,6 +13,9 @@ import '../../student/screen/student_screen.dart';
 import '../../transaction/screen/transaction_screen.dart';
 import '../../transport/screen/transport_screen.dart';
 
+// ✅ Import RecordVideoScreen (Apne path ke hisaab se adjust karein)
+import '../../record_video/screen/record_video_screen.dart';
+
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
@@ -27,7 +30,6 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
-
       body: Column(
         children: [
           Container(
@@ -100,7 +102,6 @@ class _MainScreenState extends State<MainScreen> {
                     ],
                   ),
                 ),
-
               ],
             ),
           ),
@@ -113,8 +114,6 @@ class _MainScreenState extends State<MainScreen> {
                   color: Colors.white,
                   child: Column(
                     children: [
-            
-                      // Menu Items
                       Expanded(
                         child: ListView(
                           padding: EdgeInsets.symmetric(vertical: 8),
@@ -155,15 +154,12 @@ class _MainScreenState extends State<MainScreen> {
                               isActive: _selectedIndex == 5,
                               onTap: () => setState(() => _selectedIndex = 5),
                             ),
-            
-                            // ✅ Transport ko index 6 par rakha gaya hai
                             _buildMenuItem(
                               icon: Icons.directions_bus,
                               title: "Transport",
                               isActive: _selectedIndex == 6,
                               onTap: () => setState(() => _selectedIndex = 6),
                             ),
-            
                             _buildMenuItem(
                               icon: Icons.attach_money,
                               title: "Fees",
@@ -176,16 +172,22 @@ class _MainScreenState extends State<MainScreen> {
                               isActive: _selectedIndex == 8,
                               onTap: () => setState(() => _selectedIndex = 8),
                             ),
+
+                            // ✅ NAYA MENU: Record Videos (Index 10)
+                            _buildMenuItem(
+                              icon: Icons.video_library,
+                              title: "Record Videos",
+                              isActive: _selectedIndex == 10,
+                              onTap: () => setState(() => _selectedIndex = 10),
+                            ),
+
                             _buildMenuItem(
                               icon: Icons.settings,
                               title: "Settings",
                               isActive: _selectedIndex == 9,
                               onTap: () => setState(() => _selectedIndex = 9),
                             ),
-            
                             SizedBox(height: 20),
-            
-                            // Logout
                             _buildMenuItem(
                               icon: Icons.logout,
                               title: "Logout",
@@ -200,14 +202,12 @@ class _MainScreenState extends State<MainScreen> {
                     ],
                   ),
                 ),
-            
                 /// Dashboard Content
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      // Switch Logic
                       Expanded(
                         child: _buildScreen(_selectedIndex),
                       ),
@@ -238,13 +238,15 @@ class _MainScreenState extends State<MainScreen> {
       case 5:
         return ScheduleScreen();
       case 6:
-        return TransportScreen(); // ✅ Transport Index 6
+        return TransportScreen();
       case 7:
-        return TransactionScreen();       // ✅ Fees Index 7
+        return TransactionScreen();
       case 8:
-        return MessageScreen();   // ✅ Messages Index 8
+        return MessageScreen();
       case 9:
-        return SettingScreen();   // ✅ Settings Index 9
+        return SettingScreen();
+      case 10:
+        return const RecordVideoScreen(); // ✅ Added Index 10
       default:
         return DashboardScreen();
     }
@@ -260,7 +262,6 @@ class _MainScreenState extends State<MainScreen> {
   }) {
     return Material(
       color: isActive ? Colors.blue[50] : Colors.transparent,
-      // borderRadius: BorderRadius.circular(8),
       child: ListTile(
         leading: Icon(
           icon,
@@ -299,11 +300,7 @@ class _MainScreenState extends State<MainScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
-
-              // Clear session using AuthPref
               await AuthPref.clearSession();
-
-              // Navigate back to AuthScreen
               if (mounted) {
                 Navigator.pushReplacement(
                   context,

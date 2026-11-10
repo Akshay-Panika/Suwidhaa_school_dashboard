@@ -105,4 +105,19 @@ class ApiUrls {
       'v1/school/student-leave/list/class/${Uri.encodeComponent(className)}/';
 
 
+  // Record Video endpoints
+  static const String recordVideoClasses = 'v1/school/record-videos/classes/';
+  static String recordVideoClassDetail(int id) => 'v1/school/record-videos/classes/$id/';
+
+  // ✅ Subjects ab Class ke andar hain
+  static String recordVideoSubjects(int classId) => 'v1/school/record-videos/classes/$classId/subjects/';
+  static String recordVideoSubjectDetail(int classId, int subjectId) => 'v1/school/record-videos/classes/$classId/subjects/$subjectId/';
+
+  static String recordVideoList(int classId, {int? subjectId}) =>
+      'v1/school/record-videos/classes/$classId/videos/${subjectId != null ? "?subject_id=$subjectId" : ""}';
+
+  static String recordVideoDetail(int classId, int videoId) =>
+      'v1/school/record-videos/classes/$classId/videos/$videoId/';
+
+
 }
