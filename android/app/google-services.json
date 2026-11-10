@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "649832737169",
+    "project_id": "suwidhaa-school",
+    "storage_bucket": "suwidhaa-school.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:649832737169:android:5e4661708bd6c114b2d230",
+        "android_client_info": {
+          "package_name": "com.example.suwidhaa_school_dashboard"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDsrRh0BjljFHNbDsCORIa-HbF55jAXhJM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,39 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "suwidhaa-school",
+          "appId": "1:649832737169:android:5e4661708bd6c114b2d230",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "suwidhaa-school",
+          "configurations": {
+            "android": "1:649832737169:android:5e4661708bd6c114b2d230",
+            "ios": "1:649832737169:ios:4bdbf3fe4632b1adb2d230",
+            "macos": "1:649832737169:ios:4bdbf3fe4632b1adb2d230",
+            "web": "1:649832737169:web:1e17d59d478fa2a2b2d230",
+            "windows": "1:649832737169:web:b064b5fa464af932b2d230"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
